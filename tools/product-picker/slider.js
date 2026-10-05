@@ -12,7 +12,7 @@ function productSliderBlockHtml(products, options) {
     ['mobile', options.mobile],
     ['tablet', options.tablet],
     ['desktop', options.desktop],
-    ...products.map((product) => [product.sku, product.name]),
+    ['skus', products.map((product) => product.sku).join(',')],
   ];
   const body = rows.map(([key, value]) => `<tr><td><p>${escapeHtml(key)}</p></td><td><p>${escapeHtml(value)}</p></td></tr>`).join('');
   return `<table><tbody><tr><td colspan="2">product-slider</td></tr>${body}</tbody></table>`;

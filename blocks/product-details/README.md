@@ -8,7 +8,7 @@ The Product Details block provides comprehensive product detail page functionali
 
 | Configuration Key     | Type   | Default  | Description                                                    | Required | Side Effects                                                                                                 |
 | --------------------- |--------|----------| -------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------ |
-| `selectSku` | string | | SKU selected from the Document Authoring product picker. | No | Renders the product details page for that SKU. Other content on the document stays on the page. |
+| `selectSku` | string | | SKU from the Document Authoring Products library or the Universal Editor Product field. | No | Renders the product details page for that SKU. Other content on the document stays on the page. |
 | `defaultSku` | string | | Default SKU when this block is used on a product template page. | No | Used when `selectSku` is empty. |
 | `grid-ordering-enabled` | string | `'false'` | Enables Grid Ordering functionality for configurable products. | No       | When enabled, product variants are displayed in a grid with quantity inputs and bulk add-to-cart capability. |
 

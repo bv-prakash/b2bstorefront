@@ -9,6 +9,19 @@ Two Document Authoring library pages share one catalog list. Each page inserts a
 
 `config.json` `plugins.picker.rootCategory` is the category root (this store uses `2`). The slider layout and card counts are in `blocks/product-slider/defaults.js`.
 
+## Document Authoring and Universal Editor
+
+Document Authoring inserts a block from the library pages below. Universal Editor uses the same block models in the properties panel.
+
+| Block | Document Authoring | Universal Editor |
+| --- | --- | --- |
+| Product Details | Products library, `picker.html` | **Product** field on the Product Details block |
+| Product slider | Product slider library, `slider.html` | **Layout**, **Mobile**, **Tablet**, **Desktop**, and **Products** on the Product Slider block |
+
+The Universal Editor fields use the catalog picker (`commerce-picker:picker`). Install the AEM Product Picker extension and point it at this site: `config-base-url` is `https://main--b2bstorefront--bv-prakash.aem.page` and `config-path` is `/config.json`. The category root is already `plugins.picker.rootCategory` in `config.json`.
+
+Universal Editor reads `component-models.json` from the published code branch. Push these model changes before expecting the new fields in the editor.
+
 Shared files, required by whichever picker you keep:
 
 | File | Role |
@@ -34,7 +47,7 @@ Selecting a product inserts:
 | product-details | |
 | --- | --- |
 | selectSku | ADB102 |
-| Grid Ordering Enabled | true |
+| grid-ordering-enabled | true |
 
 The first row becomes `class="product-details"` on the published page. A plain SKU paragraph does not. Product template pages still use **Default SKU** when `selectSku` is empty.
 
@@ -51,7 +64,7 @@ Files to modify:
 
 | File | Change |
 | --- | --- |
-| `blocks/product-details/_product-details.json` | Add the `selectSku` text field next to `defaultSku`. |
+| `blocks/product-details/_product-details.json` | Add the `selectSku` catalog picker and the grid ordering field next to `defaultSku`. |
 | `blocks/product-details/product-details.js` | Read `selectSku`, load that product in its own scope, and turn the variant grid on for a selected configurable product. |
 | `blocks/product-details/README.md` | Document `selectSku`. |
 | `scripts/commerce.js` | `getProductSku()` reads `selectSku`, then `defaultSku`, then metadata, then the URL. |
@@ -98,9 +111,11 @@ Library row:
 
 Local page: `http://localhost:3000/tools/product-picker/slider.html`.
 
+A library row that still points at `picker.html?block=product-slider` opens this same slider page. It shows Slider or Grid, the mobile, tablet, and desktop counts, and inserts a `product-slider` block.
+
 Select one or more products, choose **Slider** or **Grid**, set the counts, then choose **Add products**. The starting values are in `blocks/product-slider/defaults.js`: layout `slider`, mobile `1`, tablet `2`, desktop `4`.
 
-The inserted table stores each SKU in the first cell and the product name in the second:
+The inserted table stores the selected SKUs in one `skus` cell, separated by commas. Universal Editor writes that same cell from the **Products** field.
 
 | product-slider | |
 | --- | --- |
@@ -108,7 +123,7 @@ The inserted table stores each SKU in the first cell and the product name in the
 | mobile | 1 |
 | tablet | 2 |
 | desktop | 4 |
-| ADB102 | Gift Packaging |
+| skus | ADB102,COCORESTCONFIG |
 
 **Slider** shows that many cards at each breakpoint. Previous and Next appear only when more products exist than fit. **Grid** uses the same counts as columns and does not show arrows. Each card shows the image, name, price, add to cart, wishlist, and compare. The price matches the product list.
 

@@ -4,7 +4,7 @@
 
 ## Authoring
 
-Open the **Product slider** library item at `tools/product-picker/slider.html`. That page is separate from the Product Details picker. Select the products, choose **Slider** or **Grid**, and set how many cards are visible on mobile, tablet, and desktop. The inserted table looks like this:
+In Document Authoring, open the **Product slider** library item at `tools/product-picker/slider.html`. In Universal Editor, add the Product Slider block and set **Layout**, **Mobile**, **Tablet**, **Desktop**, and **Products**. Both editors store the same table:
 
 | product-slider | |
 | --- | --- |
@@ -12,10 +12,9 @@ Open the **Product slider** library item at `tools/product-picker/slider.html`. 
 | mobile | 1 |
 | tablet | 2 |
 | desktop | 4 |
-| ADB102 | Gift Packaging |
-| COCORESTCONFIG | Cocorest Coconut Mattress |
+| skus | ADB102,COCORESTCONFIG |
 
-The first cell of a product row is the SKU. The second cell is the product name. The category root comes from `plugins.picker.rootCategory` in `config.json`. The starting layout and card counts live in `blocks/product-slider/defaults.js`.
+`skus` is a comma-separated list. A row whose first cell is a SKU and whose second cell is the product name still renders. The category root comes from `plugins.picker.rootCategory` in `config.json`. The starting layout and card counts live in `blocks/product-slider/defaults.js`. The **Products** field in Universal Editor is the catalog picker.
 
 **Slider** keeps that many cards in view. Previous and Next appear only when the products do not fit that breakpoint. **Grid** uses the same counts as columns and does not show arrows.
 

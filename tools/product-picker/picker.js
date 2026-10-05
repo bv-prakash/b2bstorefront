@@ -6,7 +6,7 @@ function productBlockHtml(sku) {
   const safeSku = escapeHtml(sku);
   // Document Authoring stores blocks as tables. The first row is the block name,
   // which becomes class="product-details" on the published page.
-  return `<table><tbody><tr><td colspan="2">product-details</td></tr><tr><td><p>selectSku</p></td><td><p>${safeSku}</p></td></tr><tr><td><p>Grid Ordering Enabled</p></td><td><p>true</p></td></tr></tbody></table>`;
+  return `<table><tbody><tr><td colspan="2">product-details</td></tr><tr><td><p>selectSku</p></td><td><p>${safeSku}</p></td></tr><tr><td><p>grid-ordering-enabled</p></td><td><p>true</p></td></tr></tbody></table>`;
 }
 
 mountCatalog({

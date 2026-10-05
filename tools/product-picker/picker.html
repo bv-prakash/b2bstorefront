@@ -5,6 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Products</title>
     <link rel="stylesheet" href="picker.css">
+    <script>
+      (function redirectProductSlider() {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('block') !== 'product-slider') return;
+        params.delete('block');
+        const next = new URL('slider.html', window.location.href);
+        next.search = params.toString();
+        window.location.replace(next.href);
+      }());
+    </script>
   </head>
   <body>
     <main class="picker">

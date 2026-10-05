@@ -474,10 +474,21 @@
     "id": "product-details",
     "fields": [
       {
-        "component": "text",
+        "component": "commerce-picker:picker",
         "name": "selectSku",
-        "label": "selectSku",
-        "description": "SKU selected for this product details block"
+        "label": "Product",
+        "valueType": "string",
+        "description": "Product for this block. Document Authoring uses the Products library. Universal Editor uses this catalog picker.",
+        "commerce-picker": {
+          "selection-mode": "single",
+          "selection-type": "item"
+        }
+      },
+      {
+        "component": "boolean",
+        "name": "grid-ordering-enabled",
+        "label": "Grid Ordering Enabled",
+        "value": "true"
       },
       {
         "component": "text",
@@ -560,6 +571,17 @@
         "label": "Desktop",
         "value": 4,
         "description": "Cards visible from 1200px."
+      },
+      {
+        "component": "commerce-picker:picker",
+        "name": "skus",
+        "label": "Products",
+        "valueType": "string",
+        "description": "Products in this slider. Document Authoring uses the Product slider library. Universal Editor uses this catalog picker.",
+        "commerce-picker": {
+          "selection-mode": "multiple",
+          "selection-type": "item"
+        }
       }
     ]
   },

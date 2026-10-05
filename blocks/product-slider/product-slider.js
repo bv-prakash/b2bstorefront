@@ -47,7 +47,30 @@ const PRODUCTS_QUERY = `query ProductSlider($skus: [String!], $pageSize: Int!) {
   }
 }`;
 
-const CONFIG_KEYS = new Set(['layout', 'mobile', 'tablet', 'desktop']);
+const CONFIG_KEYS = new Set(['layout', 'mobile', 'tablet', 'desktop', 'skus', 'products']);
+
+function parseSkuList(value) {
+  const trimmed = String(value || '').trim();
+  if (!trimmed) return [];
+  if (trimmed.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) {
+        return parsed.map((item) => {
+          if (typeof item === 'string') return { sku: item.trim(), name: '' };
+          if (item?.sku) return { sku: String(item.sku).trim(), name: item.name || '' };
+          return null;
+        }).filter((item) => item?.sku);
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  }
+  return trimmed.split(/[\s,]+/)
+    .map((sku) => sku.trim())
+    .filter(Boolean)
+    .map((sku) => ({ sku, name: '' }));
+}
 
 function positiveCount(value, fallback) {
   const count = Number.parseInt(value, 10);
@@ -75,6 +98,8 @@ function readSliderConfig(block) {
       config.layout = value.toLowerCase() === 'grid' ? 'grid' : 'slider';
     } else if (key === 'mobile' || key === 'tablet' || key === 'desktop') {
       config[key] = positiveCount(value, config[key]);
+    } else if (key === 'skus' || key === 'products') {
+      config.products.push(...parseSkuList(value));
     } else if (key === 'sku' && value) {
       config.products.push({ sku: value, name: '' });
     } else if (label && !CONFIG_KEYS.has(key)) {
