@@ -1,20 +1,23 @@
-// eslint-disable-next-line import/no-unresolved
-import { register } from 'https://esm.sh/@adobe/uix-guest';
+// eslint-disable-next-line import/no-unresolved, import/extensions
+import * as guest from 'https://esm.sh/@adobe/uix-guest@1.1.11/es2022/uix-guest.mjs';
+import { UE_EXTENSION_ID } from './catalog.js';
 
-const extensionId = 'b2bstorefront-product-picker';
+const register = guest.register || guest.default?.register;
+const base = new URL('./', import.meta.url);
 
 register({
-  id: extensionId,
+  id: UE_EXTENSION_ID,
   methods: {
     canvas: {
       getRenderers() {
-        const base = new URL('./', import.meta.url);
         return [
           {
+            extension: UE_EXTENSION_ID,
             dataType: 'product-picker',
             url: new URL('picker.html?editor=ue', base).href,
           },
           {
+            extension: UE_EXTENSION_ID,
             dataType: 'product-slider-picker',
             url: new URL('slider.html?editor=ue', base).href,
           },

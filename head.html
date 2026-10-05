@@ -4,7 +4,30 @@
   move-to-http-header="true"
 />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<meta name="urn:adobe:aue:config:extensions" content="https://experience.adobe.com/solutions/CQ-universal-editor-extensions/static-assets/resources/authorbus-handler.html,https://main--b2bstorefront--bv-prakash.aem.page/tools/product-picker/ue.html" />
+<script nonce="aem">
+  (function addProductPickerExtension() {
+    if (!/\.ue\.da\.live$/.test(window.location.hostname)) return;
+    var name = 'urn:adobe:aue:config:extensions';
+    var picker = window.location.origin.replace('.ue.da.live', '.aem.page') + '/tools/product-picker/ue.html';
+    var metas = document.querySelectorAll('meta[name="' + name + '"]');
+    var urls = [];
+    metas.forEach(function collect(meta) {
+      (meta.content || '').split(',').forEach(function add(url) {
+        var value = url.trim();
+        if (value && urls.indexOf(value) === -1) urls.push(value);
+      });
+    });
+    if (urls.indexOf(picker) === -1) urls.push(picker);
+    var meta = metas[0];
+    if (!meta) {
+      meta = document.createElement('meta');
+      meta.name = name;
+      document.head.prepend(meta);
+    }
+    meta.content = urls.join(',');
+    for (var i = 1; i < metas.length; i += 1) metas[i].remove();
+  }());
+</script>
 <script nonce="aem" type="speculationrules">
     {
         "prerender": [{

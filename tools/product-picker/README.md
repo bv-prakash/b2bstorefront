@@ -22,6 +22,19 @@ In Universal Editor, the **Product** field and the **Products** field open this 
 
 Universal Editor reads `component-models.json` and `head.html` from the published code branch. Push these changes before expecting the category picker in the editor.
 
+`ue.da.live` adds its own `urn:adobe:aue:config:extensions` meta tag before `head.html`, and the editor reads only that first tag. A script in `head.html` adds `tools/product-picker/ue.html` to that first tag. Universal Editor hides the **Product** and **Products** fields when this extension does not load.
+
+To load the extension by hand, add `?ext=` to the editor URL:
+
+`https://experience.adobe.com/#/@2E259F2A6ABE32430A495C0F/aem/editor/canvas/main--b2bstorefront--bv-prakash.ue.da.live/index?ext=https://main--b2bstorefront--bv-prakash.aem.page/tools/product-picker/ue.html`
+
+| File | Role in Universal Editor |
+| --- | --- |
+| `tools/product-picker/ue.html` and `ue.js` | Register the `product-picker` and `product-slider-picker` fields. |
+| `tools/product-picker/picker.html?editor=ue` | Product field: category tree and SKU search, saves `selectSku`. |
+| `tools/product-picker/slider.html?editor=ue` | Products field: category tree, SKU search, Slider or Grid, and the card counts. Saves `skus`. |
+| `head.html` | Adds the extension to the Universal Editor page. |
+
 Shared files, required by whichever picker you keep:
 
 | File | Role |

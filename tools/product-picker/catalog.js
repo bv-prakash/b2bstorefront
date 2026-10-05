@@ -94,8 +94,8 @@ export function connectAuthoring() {
 
 export function connectUniversalEditor() {
   if (!isUniversalEditorPicker()) return Promise.resolve(null);
-  // eslint-disable-next-line import/no-unresolved
-  return import('https://esm.sh/@adobe/uix-guest')
+  // eslint-disable-next-line import/no-unresolved, import/extensions
+  return import('https://esm.sh/@adobe/uix-guest@1.1.11/es2022/uix-guest.mjs')
     .then(async (guest) => {
       const attach = guest.attach || guest.default?.attach;
       const connection = await attach({ id: UE_EXTENSION_ID });
