@@ -33,13 +33,7 @@
       },
       "plugins": {
         "picker": {
-          "rootCategory": "2",
-          "productSlider": {
-            "layout": "slider",
-            "mobile": 1,
-            "tablet": 2,
-            "desktop": 4
-          }
+          "rootCategory": "2"
         }
       }
     }

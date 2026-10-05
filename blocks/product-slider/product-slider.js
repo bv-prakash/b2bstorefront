@@ -1,11 +1,13 @@
-import { getConfigValue } from '@dropins/tools/lib/aem/configs.js';
-import { Button, Icon, provider as UI } from '@dropins/tools/components.js';
+import {
+  Button, Icon, PriceRange, provider as UI,
+} from '@dropins/tools/components.js';
 import * as cartApi from '@dropins/storefront-cart/api.js';
 import { WishlistToggle } from '@dropins/storefront-wishlist/containers/WishlistToggle.js';
 import { render as wishlistRender } from '@dropins/storefront-wishlist/render.js';
 import { CS_FETCH_GRAPHQL, fetchPlaceholders, getProductLink } from '../../scripts/commerce.js';
 import '../../scripts/initializers/cart.js';
 import '../../scripts/initializers/wishlist.js';
+import { PRODUCT_SLIDER_DEFAULTS } from './defaults.js';
 
 const PRODUCTS_QUERY = `query ProductSlider($skus: [String!], $pageSize: Int!) {
   productSearch(
@@ -34,6 +36,10 @@ const PRODUCTS_QUERY = `query ProductSlider($skus: [String!], $pageSize: Int!) {
               final { amount { value currency } }
               regular { amount { value currency } }
             }
+            maximum {
+              final { amount { value currency } }
+              regular { amount { value currency } }
+            }
           }
         }
       }
@@ -49,12 +55,11 @@ function positiveCount(value, fallback) {
 }
 
 function sliderDefaults() {
-  const configured = getConfigValue('plugins.picker.productSlider') || {};
   return {
-    layout: configured.layout === 'grid' ? 'grid' : 'slider',
-    mobile: positiveCount(configured.mobile, 1),
-    tablet: positiveCount(configured.tablet, 2),
-    desktop: positiveCount(configured.desktop, 4),
+    layout: PRODUCT_SLIDER_DEFAULTS.layout === 'grid' ? 'grid' : 'slider',
+    mobile: positiveCount(PRODUCT_SLIDER_DEFAULTS.mobile, 1),
+    tablet: positiveCount(PRODUCT_SLIDER_DEFAULTS.tablet, 2),
+    desktop: positiveCount(PRODUCT_SLIDER_DEFAULTS.desktop, 4),
   };
 }
 
@@ -102,32 +107,61 @@ function productImage(product) {
   return preferred?.url || '';
 }
 
-function priceAmounts(product) {
-  const price = product.price || product.priceRange?.minimum;
-  return {
-    final: price?.final?.amount,
-    regular: price?.regular?.amount,
-  };
+function priceCurrency(amount) {
+  const currency = amount?.currency || 'USD';
+  return Intl.supportedValuesOf('currency').includes(currency) ? currency : 'USD';
 }
 
-function formatAmount(amount) {
-  if (!amount || typeof amount.value !== 'number') return '';
-  return new Intl.NumberFormat(undefined, {
-    style: 'currency',
-    currency: amount.currency || 'USD',
-  }).format(amount.value);
+function salePriceMarkup() {
+  return '<div class="product-price"><span class="regular-price-normal"></span><span class="special-price-crossed"></span></div>';
 }
 
-function priceHtml(product) {
-  const { final, regular } = priceAmounts(product);
-  const finalText = formatAmount(final);
-  if (!finalText) return '';
-  const regularText = formatAmount(regular);
-  const sale = regular?.value > final?.value
-    ? `<s class="product-slider-card-price-regular">${escapeHtml(regularText)}</s>`
-    : '';
-  const prefix = product.__typename === 'ComplexProductView' ? 'From ' : '';
-  return `<p class="product-slider-card-price">${prefix}<span class="product-slider-card-price-final">${escapeHtml(finalText)}</span>${sale}</p>`;
+async function renderPrice(product, el) {
+  if (product.typename === 'ComplexProductView' || product.__typename === 'ComplexProductView') {
+    const range = product.priceRange;
+    const minimumFinal = range?.minimum?.final?.amount?.value;
+    const minimumRegular = range?.minimum?.regular?.amount?.value;
+    const maximumFinal = range?.maximum?.final?.amount?.value;
+    const maximumRegular = range?.maximum?.regular?.amount?.value;
+    if (minimumRegular === undefined || maximumRegular === undefined) return;
+    const currency = priceCurrency(range.minimum?.regular?.amount);
+    const onSale = minimumFinal < minimumRegular || maximumFinal < maximumRegular;
+    if (onSale) {
+      el.innerHTML = salePriceMarkup();
+      await UI.render(PriceRange, {
+        display: 'from to',
+        minimumAmount: minimumFinal,
+        maximumAmount: maximumFinal,
+        currency,
+      })(el.querySelector('.regular-price-normal'));
+      await UI.render(PriceRange, {
+        display: 'from to',
+        minimumAmount: minimumRegular,
+        maximumAmount: maximumRegular,
+        currency,
+      })(el.querySelector('.special-price-crossed'));
+      return;
+    }
+    await UI.render(PriceRange, {
+      display: 'from to',
+      minimumAmount: minimumRegular,
+      maximumAmount: maximumRegular,
+      currency,
+    })(el);
+    return;
+  }
+
+  const finalAmount = product.price?.final?.amount?.value;
+  const regularAmount = product.price?.regular?.amount?.value;
+  if (regularAmount === undefined) return;
+  const currency = priceCurrency(product.price?.regular?.amount);
+  if (finalAmount !== undefined && finalAmount < regularAmount) {
+    el.innerHTML = salePriceMarkup();
+    await UI.render(PriceRange, { amount: finalAmount, currency })(el.querySelector('.regular-price-normal'));
+    await UI.render(PriceRange, { amount: regularAmount, currency })(el.querySelector('.special-price-crossed'));
+    return;
+  }
+  await UI.render(PriceRange, { amount: regularAmount, currency })(el);
 }
 
 function visibleCount(config) {
@@ -143,11 +177,11 @@ function cardHtml(product) {
   const media = image
     ? `<img src="${escapeHtml(image)}" alt="${escapeHtml(name)}">`
     : '';
-  return `<article class="product-slider-card">
+  return `<article class="product-slider-card" data-sku="${escapeHtml(product.sku)}">
     <a class="product-slider-card-media" href="${escapeHtml(href)}">${media}</a>
     <div class="product-slider-card-body">
       <a class="product-slider-card-name" href="${escapeHtml(href)}">${escapeHtml(name)}</a>
-      ${priceHtml(product)}
+      <div class="product-slider-card-price"></div>
       <div class="product-slider-card-actions">
         <div class="product-slider-card-cart"></div>
         <div class="product-slider-card-wishlist"></div>
@@ -157,7 +191,7 @@ function cardHtml(product) {
   </article>`;
 }
 
-function renderCompare(panel, compared) {
+function renderCompare(panel, compared, block) {
   if (compared.size < 2) {
     panel.hidden = true;
     panel.replaceChildren();
@@ -168,10 +202,11 @@ function renderCompare(panel, compared) {
     <ul>${[...compared.values()].map((product) => {
     const image = productImage(product);
     const thumb = image ? `<img src="${escapeHtml(image)}" alt="">` : '';
+    const price = block.querySelector(`.product-slider-card[data-sku="${CSS.escape(product.sku)}"] .product-slider-card-price`)?.innerHTML || '';
     return `<li>
       ${thumb}
       <span>${escapeHtml(product.name || product.sku)}</span>
-      <span>${escapeHtml(formatAmount(priceAmounts(product).final))}</span>
+      <div class="product-slider-card-price">${price}</div>
     </li>`;
   }).join('')}</ul>`;
 }
@@ -241,6 +276,7 @@ export default async function decorate(block) {
     const name = product.name || product.sku;
     const cartSlot = card.querySelector('.product-slider-card-cart');
     const addToCartLabel = `${labels.Global?.AddProductToCart || 'Add to cart'} ${name}`;
+    await renderPrice(product, card.querySelector('.product-slider-card-price'));
     const needsOptions = product.__typename === 'ComplexProductView';
     await UI.render(Button, {
       'aria-label': addToCartLabel,
@@ -266,7 +302,7 @@ export default async function decorate(block) {
       else compared.delete(product.sku);
       button.setAttribute('aria-pressed', String(selected));
       card.classList.toggle('is-compared', selected);
-      renderCompare(comparePanel, compared);
+      renderCompare(comparePanel, compared, block);
     });
   }));
 

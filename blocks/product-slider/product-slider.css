@@ -105,9 +105,16 @@
   margin: 0;
 }
 
-.product-slider-card-price-regular {
-  margin-left: 8px;
-  color: #666;
+.product-slider .product-price {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+}
+
+.product-slider .special-price-crossed {
+  text-decoration: line-through;
+  opacity: 0.5;
 }
 
 .product-slider-card-actions {

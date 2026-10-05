@@ -1,0 +1,67 @@
+.slider-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.slider-layout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.slider-layout legend,
+.slider-breakpoints p {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.slider-breakpoints {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.slider-breakpoints p {
+  grid-column: 1 / -1;
+}
+
+.slider-breakpoints label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.slider-breakpoints input {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #b5b5b5;
+  border-radius: 4px;
+  font: inherit;
+}
+
+.picker .slider-options button {
+  align-self: flex-start;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 4px;
+  background: #1473e6;
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+
+.picker .slider-options button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

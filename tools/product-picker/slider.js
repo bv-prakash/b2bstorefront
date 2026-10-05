@@ -1,0 +1,86 @@
+import { PRODUCT_SLIDER_DEFAULTS } from '../../blocks/product-slider/defaults.js';
+import { connectAuthoring, escapeHtml, mountCatalog } from './catalog.js';
+
+const authoring = connectAuthoring();
+const selectedProducts = new Map();
+const sliderAddEl = document.getElementById('slider-add');
+const listEl = document.getElementById('product-list');
+
+function productSliderBlockHtml(products, options) {
+  const rows = [
+    ['layout', options.layout],
+    ['mobile', options.mobile],
+    ['tablet', options.tablet],
+    ['desktop', options.desktop],
+    ...products.map((product) => [product.sku, product.name]),
+  ];
+  const body = rows.map(([key, value]) => `<tr><td><p>${escapeHtml(key)}</p></td><td><p>${escapeHtml(value)}</p></td></tr>`).join('');
+  return `<table><tbody><tr><td colspan="2">product-slider</td></tr>${body}</tbody></table>`;
+}
+
+function sliderOptions() {
+  const layout = document.querySelector('input[name="slider-layout"]:checked')?.value === 'grid' ? 'grid' : 'slider';
+  return {
+    layout,
+    mobile: document.getElementById('slider-mobile').value,
+    tablet: document.getElementById('slider-tablet').value,
+    desktop: document.getElementById('slider-desktop').value,
+  };
+}
+
+function updateBreakpointLabel() {
+  const label = document.getElementById('slider-breakpoint-label');
+  const layout = document.querySelector('input[name="slider-layout"]:checked')?.value;
+  label.textContent = layout === 'grid' ? 'Columns' : 'Cards visible';
+}
+
+function applySliderDefaults() {
+  const layout = PRODUCT_SLIDER_DEFAULTS.layout === 'grid' ? 'grid' : 'slider';
+  const selected = document.querySelector(`input[name="slider-layout"][value="${layout}"]`);
+  if (selected) selected.checked = true;
+  document.getElementById('slider-mobile').value = PRODUCT_SLIDER_DEFAULTS.mobile;
+  document.getElementById('slider-tablet').value = PRODUCT_SLIDER_DEFAULTS.tablet;
+  document.getElementById('slider-desktop').value = PRODUCT_SLIDER_DEFAULTS.desktop;
+  updateBreakpointLabel();
+}
+
+function updateAddButton() {
+  sliderAddEl.disabled = selectedProducts.size === 0;
+  sliderAddEl.textContent = selectedProducts.size
+    ? `Add ${selectedProducts.size} products`
+    : 'Add products';
+}
+
+function toggleSelectedProduct(product) {
+  if (selectedProducts.has(product.sku)) selectedProducts.delete(product.sku);
+  else selectedProducts.set(product.sku, product);
+  const pressed = selectedProducts.has(product.sku);
+  listEl.querySelectorAll(`button[data-sku="${CSS.escape(product.sku)}"]`).forEach((item) => {
+    item.setAttribute('aria-pressed', String(pressed));
+  });
+  updateAddButton();
+}
+
+async function insertProductSlider() {
+  if (!selectedProducts.size) return;
+  const html = productSliderBlockHtml([...selectedProducts.values()], sliderOptions());
+  const actions = await authoring;
+  if (actions) {
+    actions.sendHTML(html);
+    actions.closeLibrary();
+  }
+}
+
+document.querySelectorAll('input[name="slider-layout"]').forEach((input) => {
+  input.addEventListener('change', updateBreakpointLabel);
+});
+sliderAddEl.addEventListener('click', () => {
+  insertProductSlider().catch((error) => console.error(error));
+});
+
+applySliderDefaults();
+
+mountCatalog({
+  isSelected: (sku) => selectedProducts.has(sku),
+  onSelect: toggleSelectedProduct,
+});

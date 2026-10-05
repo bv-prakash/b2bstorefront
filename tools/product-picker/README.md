@@ -1,87 +1,165 @@
-# Product picker
+# Product picker and product slider
 
-`tools/product-picker/picker.js` is the Document Authoring library page for choosing a store product. Selecting a product inserts a Product Details block whose `selectSku` is that product. Preview then shows the gallery, price, options, and add to cart for that SKU. Other content on the same document stays on the page.
+Two Document Authoring library pages share one catalog list. Each page inserts a different block.
 
-## Guide
+| Picker | Page | Inserts |
+| --- | --- | --- |
+| Product Details | `picker.html` | One `product-details` block for the selected SKU |
+| Product slider | `slider.html` | One `product-slider` block for the selected SKUs |
 
-1. **Default Category** is the store root and lists every product assigned to this store. It is the same catalog as the root category, so it is not listed a second time.
-2. **Product by category** and **Search by SKU** sit on the top row. Expand a parent to see the next level of child categories. A product count appears beside a category when the catalog has one. The product list is below both controls. Categories come from `plugins.picker.rootCategory` in `config.json` (this store uses `2`).
-3. Select a product. A Product Details block is added to the document, with `selectSku` set to that product.
-4. Preview the page to see the product gallery, price, and add to cart. Other content on the document stays on the page.
+`config.json` `plugins.picker.rootCategory` is the category root (this store uses `2`). The slider layout and card counts are in `blocks/product-slider/defaults.js`.
 
-Each selection is its own block, so two selections on one document show two products.
+Shared files, required by whichever picker you keep:
 
-## Product slider
+| File | Role |
+| --- | --- |
+| `tools/product-picker/catalog.js` | Category tree, SKU search, and product list. It does not insert a block. |
+| `tools/product-picker/picker.css` | Layout of that list. |
+| `config.json` | `commerce-endpoint`, store headers, and `plugins.picker.rootCategory`. |
 
-Add a second library row when authors should build a product slider from the same category tree and SKU search. `config.json` `plugins.picker.productSlider` supplies the starting layout and the mobile, tablet, and desktop counts.
+After a block model JSON changes, run `npm run build:json`. That refreshes `component-models.json`, `component-definition.json`, and `component-filters.json`.
 
-| title | path | format | experience |
-| --- | --- | --- | --- |
-| Product slider | `https://main--b2bstorefront--bv-prakash.aem.page/tools/product-picker/picker.html?block=product-slider` | `fullsize-dialog` | `fullsize-dialog` |
+## Add the Product Details picker
 
-Select one or more products, choose **Slider** or **Grid**, then add them. Each product is stored as its SKU and name. Slider arrows are created on the page only when that breakpoint shows fewer cards than the number of products.
-
-## How to use it
-
-Add a row on the site library sheet in Document Authoring. The sheet columns are `title`, `path`, `format`, and `experience`.
+Library row. The sheet columns are `title`, `path`, `format`, and `experience`.
 
 | title | path | format | experience |
 | --- | --- | --- | --- |
 | Products | `https://main--b2bstorefront--bv-prakash.aem.page/tools/product-picker/picker.html` | `fullsize-dialog` | `fullsize-dialog` |
 
-That path must be this picker. The commerce category picker does not list products.
+Local page: `http://localhost:3000/tools/product-picker/picker.html`.
 
-While the code is only local, open `http://localhost:3000/tools/product-picker/picker.html`. After the code is on preview, Document Authoring loads the library path above.
-
-`picker.js` reads `/config.json`, loads categories and products from the catalog, and inserts this table with the Document Authoring `sendHTML` action:
+Selecting a product inserts:
 
 | product-details | |
 | --- | --- |
 | selectSku | ADB102 |
 | Grid Ordering Enabled | true |
 
-The first row becomes `class="product-details"` on the published page, which loads `blocks/product-details/product-details.js`. A plain SKU paragraph does not. Product template pages can still use **Default SKU** when `selectSku` is empty. Delete any older plain `defaultSku` or `sku` text and select the product again.
+The first row becomes `class="product-details"` on the published page. A plain SKU paragraph does not. Product template pages still use **Default SKU** when `selectSku` is empty.
 
-## Impact
+Files to add:
 
-- A document can show a full product details layout for the selected SKU, including other authored content around that block.
-- Two Product Details blocks keep two SKUs. Each selected SKU is loaded in its own scope.
-- `selectSku` is used before page metadata and the product URL. A shared metadata SKU no longer replaces the selected product.
-- **Grid Ordering Enabled** `true` shows the variant grid for a configurable product. A selected SKU with that row omitted still turns the grid on for a configurable product. A simple product keeps the grid hidden. Set the row to `false` to hide it.
-- A product list page stays a product list page when a Product Details block is also on the page, including in the footer. The product-page setup no longer sends that page to a 404 when the address has no SKU.
-- The normal product template still uses **Default SKU**, page metadata, or `/products/{urlKey}/{sku}`.
+| File | Why |
+| --- | --- |
+| `tools/product-picker/picker.html` | The page Document Authoring opens. |
+| `tools/product-picker/picker.js` | Inserts the `product-details` table with `selectSku` and Grid Ordering Enabled. |
+| `tools/product-picker/catalog.js` | Shared catalog list. Add it once, even if the slider is added later. |
+| `tools/product-picker/picker.css` | Shared list styles. |
 
-## Files required for this feature
+Files to modify:
 
-| File | Change | Why it is required |
-| --- | --- | --- |
-| `tools/product-picker/picker.html` | Category list, search, and product list. | The page Document Authoring opens. |
-| `tools/product-picker/picker.css` | Styles for that page. | Layout of the picker only. |
-| `tools/product-picker/picker.js` | Catalog queries and the inserted `product-details` table. | Writes `selectSku` and Grid Ordering Enabled. |
-| `blocks/product-details/_product-details.json` | Authoring field `selectSku`, kept next to `defaultSku`. | Document Authoring recognizes the field. |
-| `component-models.json` | Same `selectSku` field. | Merged component model for the block. |
-| `blocks/product-details/product-details.js` | Reads `selectSku`, loads that product in its own scope, and enables the variant grid for a selected configurable product. | Renders the product details for the selected SKU. |
-| `blocks/product-details/README.md` | Documents `selectSku`. | Block configuration reference. |
-| `scripts/commerce.js` | `getProductSku()` reads `selectSku`, then `defaultSku`, then metadata, then the URL. | The page SKU matches the selected block. |
-| `scripts/initializers/pdp.js` | Skips the 404 when the page is not a product template and has no page SKU. | A product list page that also contains a Product Details block keeps its own content. |
-| `config.json` | `commerce-endpoint`, store headers, and `plugins.picker.rootCategory`. | Already required by the storefront. The picker reads the same file. |
+| File | Change |
+| --- | --- |
+| `blocks/product-details/_product-details.json` | Add the `selectSku` text field next to `defaultSku`. |
+| `blocks/product-details/product-details.js` | Read `selectSku`, load that product in its own scope, and turn the variant grid on for a selected configurable product. |
+| `blocks/product-details/README.md` | Document `selectSku`. |
+| `scripts/commerce.js` | `getProductSku()` reads `selectSku`, then `defaultSku`, then metadata, then the URL. |
+| `scripts/initializers/pdp.js` | Skip the 404 when the page is not a product template and has no page SKU. |
+| `component-models.json` | Regenerated by `npm run build:json` so Document Authoring sees `selectSku`. |
 
-## Stop using the picker
+`product-details` is already in `models/_section.json`, so that file does not need a new entry.
 
-Remove the **Products** row from the Document Authoring library sheet. Authors will no longer see the picker. Documents that already contain a `selectSku` block still render that product until those blocks are deleted.
+## Remove the Product Details picker
 
-To remove the picker files as well, delete the `tools/product-picker/` folder. The library path will 404 after that, so remove the library row first.
+Delete every Product Details block inserted by the picker, including blocks in the footer, before reverting the code. Leaving those blocks in place and restoring the old product-page setup sends the product list page to a 404.
 
-## Remove the feature from the storefront
+Files to delete:
 
-Do this only when no document should render a product from `selectSku`. Delete every Product Details block that was inserted by the picker, including blocks in the footer, before reverting the code below. Leaving those blocks in place and restoring the old product-page setup sends the product list page to a 404.
+| File | When |
+| --- | --- |
+| `tools/product-picker/picker.html` | Always, for this picker. |
+| `tools/product-picker/picker.js` | Always, for this picker. |
+| `tools/product-picker/catalog.js` | Only when the product slider is also unused. |
+| `tools/product-picker/picker.css` | Only when the product slider is also unused. |
 
-1. Delete `tools/product-picker/`.
-2. Remove the **Products** library row.
-3. Remove the `selectSku` field from `blocks/product-details/_product-details.json` and `component-models.json`. Leave `defaultSku`.
-4. In `blocks/product-details/product-details.js`, remove `loadSelectedProduct` and the `selectSku` scope. Render from the page product again, and set grid ordering only when **Grid Ordering Enabled** is `true`.
-5. In `scripts/commerce.js`, stop reading `selectsku` / `select-sku`. Restore `getProductSku()` to page metadata, then the block default SKU, then the product URL.
-6. In `scripts/initializers/pdp.js`, restore the missing-SKU path so a product page with no SKU calls `loadErrorPage()`.
-7. Remove the `selectSku` row from `blocks/product-details/README.md`.
+Also remove the **Products** library row.
 
-After that, product pages work from the product URL, page metadata, or **Default SKU** on the product template.
+Files to modify:
+
+| File | Change |
+| --- | --- |
+| `blocks/product-details/_product-details.json` | Remove the `selectSku` field. Leave `defaultSku`. |
+| `blocks/product-details/product-details.js` | Remove `loadSelectedProduct` and the `selectSku` scope. Render from the page product again. Set grid ordering only when **Grid Ordering Enabled** is `true`. |
+| `blocks/product-details/README.md` | Remove the `selectSku` row. |
+| `scripts/commerce.js` | Stop reading `selectsku` / `select-sku`. Restore `getProductSku()` to page metadata, then the block default SKU, then the product URL. |
+| `scripts/initializers/pdp.js` | Restore the missing-SKU path so a product page with no SKU calls `loadErrorPage()`. |
+| `component-models.json` | Regenerated by `npm run build:json` after `selectSku` is removed from the block model. |
+
+Product pages then work from the product URL, page metadata, or **Default SKU** on the product template.
+
+## Add the product slider
+
+Library row:
+
+| title | path | format | experience |
+| --- | --- | --- | --- |
+| Product slider | `https://main--b2bstorefront--bv-prakash.aem.page/tools/product-picker/slider.html` | `fullsize-dialog` | `fullsize-dialog` |
+
+Local page: `http://localhost:3000/tools/product-picker/slider.html`.
+
+Select one or more products, choose **Slider** or **Grid**, set the counts, then choose **Add products**. The starting values are in `blocks/product-slider/defaults.js`: layout `slider`, mobile `1`, tablet `2`, desktop `4`.
+
+The inserted table stores each SKU in the first cell and the product name in the second:
+
+| product-slider | |
+| --- | --- |
+| layout | slider |
+| mobile | 1 |
+| tablet | 2 |
+| desktop | 4 |
+| ADB102 | Gift Packaging |
+
+**Slider** shows that many cards at each breakpoint. Previous and Next appear only when more products exist than fit. **Grid** uses the same counts as columns and does not show arrows. Each card shows the image, name, price, add to cart, wishlist, and compare. The price matches the product list.
+
+Files to add:
+
+| File | Why |
+| --- | --- |
+| `tools/product-picker/slider.html` | The page Document Authoring opens. |
+| `tools/product-picker/slider.js` | Inserts the `product-slider` table. |
+| `tools/product-picker/slider.css` | Styles for the slider and grid choices. |
+| `tools/product-picker/catalog.js` | Shared catalog list. Skip this if the Product Details picker is already present. |
+| `tools/product-picker/picker.css` | Shared list styles. Skip this if the Product Details picker is already present. |
+| `blocks/product-slider/product-slider.js` | Renders the cards, price, cart, wishlist, compare, and arrows. |
+| `blocks/product-slider/product-slider.css` | Card and slider layout. |
+| `blocks/product-slider/defaults.js` | Starting layout and mobile, tablet, and desktop counts. |
+| `blocks/product-slider/_product-slider.json` | Document Authoring model for the block. |
+| `blocks/product-slider/README.md` | Block reference. |
+
+Files to modify:
+
+| File | Change |
+| --- | --- |
+| `models/_section.json` | Add `product-slider` to the section component list, next to `product-details`. |
+| `component-models.json` | Regenerated by `npm run build:json`. |
+| `component-definition.json` | Regenerated by `npm run build:json`. |
+| `component-filters.json` | Regenerated by `npm run build:json`. |
+
+## Remove the product slider
+
+Delete every Product Slider block inserted by the picker before deleting the code. Leave the Product Details picker files when that picker is still in use.
+
+Files to delete:
+
+| File | When |
+| --- | --- |
+| `tools/product-picker/slider.html` | Always, for this picker. |
+| `tools/product-picker/slider.js` | Always, for this picker. |
+| `tools/product-picker/slider.css` | Always, for this picker. |
+| `blocks/product-slider/` | Always, when no document should render the slider. This includes `defaults.js`, `product-slider.js`, `product-slider.css`, `_product-slider.json`, and `README.md`. |
+| `tools/product-picker/catalog.js` | Only when the Product Details picker is also unused. |
+| `tools/product-picker/picker.css` | Only when the Product Details picker is also unused. |
+
+Also remove the **Product slider** library row.
+
+Files to modify:
+
+| File | Change |
+| --- | --- |
+| `models/_section.json` | Remove `product-slider` from the section component list. |
+| `component-models.json` | Regenerated by `npm run build:json` after `_product-slider.json` is deleted. |
+| `component-definition.json` | Regenerated by `npm run build:json`. |
+| `component-filters.json` | Regenerated by `npm run build:json`. |
+
+Do not change `blocks/product-details/`, `scripts/commerce.js`, or `scripts/initializers/pdp.js` when only the slider is removed. Those files belong to the Product Details picker.

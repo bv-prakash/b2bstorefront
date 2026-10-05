@@ -3,8 +3,9 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Products</title>
+    <title>Product slider</title>
     <link rel="stylesheet" href="picker.css">
+    <link rel="stylesheet" href="slider.css">
   </head>
   <body>
     <main class="picker">
@@ -23,10 +24,24 @@
             <label for="product-search">Search by SKU</label>
             <input id="product-search" type="search" placeholder="SKU or name" autocomplete="off">
           </form>
+          <div id="slider-options" class="slider-options">
+            <fieldset class="slider-layout">
+              <legend>View</legend>
+              <label><input type="radio" name="slider-layout" value="slider" checked> Slider</label>
+              <label><input type="radio" name="slider-layout" value="grid"> Grid</label>
+            </fieldset>
+            <div class="slider-breakpoints">
+              <p id="slider-breakpoint-label">Cards visible</p>
+              <label>Mobile <input id="slider-mobile" type="number" min="1" max="6" value="1"></label>
+              <label>Tablet <input id="slider-tablet" type="number" min="1" max="6" value="2"></label>
+              <label>Desktop <input id="slider-desktop" type="number" min="1" max="6" value="4"></label>
+            </div>
+            <button type="button" id="slider-add" disabled>Add products</button>
+          </div>
         </div>
       </div>
       <ul id="product-list" class="product-list"></ul>
     </main>
-    <script type="module" src="picker.js"></script>
+    <script type="module" src="slider.js"></script>
   </body>
 </html>
