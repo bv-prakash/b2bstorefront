@@ -30,7 +30,7 @@ const FOLDER_ICON = '<svg class="category-folder" viewBox="0 0 16 14" aria-hidde
 const PRODUCTS_QUERY = `query ProductPicker($phrase: String!, $currentPage: Int!, $pageSize: Int!) {
   productSearch(phrase: $phrase, current_page: $currentPage, page_size: $pageSize) {
     total_count
-    items { productView { sku name } }
+    items { productView { sku name images { url roles } } }
     page_info { current_page total_pages }
   }
 }`;
@@ -48,7 +48,7 @@ const CATEGORY_PRODUCTS_QUERY = `query ProductPickerByCategory(
     page_size: $pageSize
   ) {
     total_count
-    items { productView { sku name } }
+    items { productView { sku name images { url roles } } }
     page_info { current_page total_pages }
   }
 }`;
@@ -57,17 +57,16 @@ const statusEl = document.getElementById('picker-status');
 const listEl = document.getElementById('product-list');
 const searchEl = document.getElementById('product-search');
 const categoryEl = document.getElementById('category-filter');
-const categoryPathEl = document.getElementById('category-path');
 
 let commerce = null;
 let phrase = '';
 let categoryId = '';
-let categoryPath = 'All products';
 let daActions = null;
 let requestId = 0;
 
 function setStatus(message) {
-  statusEl.textContent = message;
+  statusEl.hidden = !message;
+  statusEl.textContent = message || '';
 }
 
 function escapeHtml(value) {
@@ -168,11 +167,13 @@ function categoryNodeHtml(node, parentPath, level) {
   const toggle = hasChildren
     ? `<button type="button" class="category-toggle" aria-expanded="${open}" aria-label="${open ? 'Collapse' : 'Expand'} ${escapeHtml(node.name)}"></button>`
     : '<span class="category-toggle-spacer" aria-hidden="true"></span>';
+  // The root category is the whole catalog. Filtering by its id returns no products.
+  const categoryValue = level === 0 ? '' : node.id;
 
   return `<li class="category-node${hasChildren ? ' has-children' : ' is-leaf'}${open ? ' is-open' : ''}" data-level="${level}">
     <div class="category-row">
       ${toggle}
-      <button type="button" class="category-select" data-category="${escapeHtml(node.id)}" data-path="${escapeHtml(trail)}" aria-pressed="false">
+      <button type="button" class="category-select" data-category="${escapeHtml(categoryValue)}" data-path="${escapeHtml(trail)}" aria-pressed="${level === 0 ? 'true' : 'false'}">
         ${FOLDER_ICON}
         <span class="category-name">${escapeHtml(node.name)}</span>
         ${count}
@@ -182,21 +183,10 @@ function categoryNodeHtml(node, parentPath, level) {
   </li>`;
 }
 
-function allProductsHtml(totalCount) {
-  const count = Number.isInteger(totalCount) ? `<span class="category-count">(${totalCount})</span>` : '';
-  return `<div class="category-row category-all">
-    <span class="category-toggle-spacer" aria-hidden="true"></span>
-    <button type="button" class="category-select" data-category="" data-path="All products" aria-pressed="true">
-      ${FOLDER_ICON}
-      <span class="category-name">All products</span>
-      ${count}
-    </button>
-  </div>`;
-}
-
-function renderCategoryTree(root, totalCount) {
-  const tree = root ? `<ul class="category-branches">${categoryNodeHtml(root, '', 0)}</ul>` : '';
-  categoryEl.innerHTML = `${allProductsHtml(totalCount)}${tree}`;
+function renderCategoryTree(root) {
+  categoryEl.innerHTML = root
+    ? `<ul class="category-branches">${categoryNodeHtml(root, '', 0)}</ul>`
+    : '';
 }
 
 function setTreeOpen(open) {
@@ -246,11 +236,11 @@ async function loadCategories() {
       countResult.counts,
       countResult.totalCount,
     );
-    renderCategoryTree(root, countResult.totalCount);
+    renderCategoryTree(root);
   } catch (error) {
     console.error(error);
-    renderCategoryTree(null, null);
-    setStatus('Categories could not be loaded. All products is still available.');
+    renderCategoryTree(null);
+    setStatus('Categories could not be loaded.');
   }
 }
 
@@ -287,20 +277,35 @@ async function fetchAllProducts() {
   return { products, totalCount };
 }
 
+function productImageUrl(product) {
+  const images = product.images || [];
+  const preferred = images.find((image) => image.roles?.includes('small_image'))
+    || images.find((image) => image.roles?.includes('thumbnail'))
+    || images[0];
+  return preferred?.url || '';
+}
+
 function renderProducts(products) {
   if (!products.length) {
-    listEl.innerHTML = '';
+    listEl.innerHTML = '<li class="product-empty">No products.</li>';
     return;
   }
 
-  listEl.innerHTML = products.map((product) => `
-    <li>
+  listEl.innerHTML = products.map((product) => {
+    const imageUrl = productImageUrl(product);
+    const thumb = imageUrl
+      ? `<img src="${escapeHtml(imageUrl)}" alt="">`
+      : '';
+    return `<li>
       <button type="button" data-sku="${escapeHtml(product.sku)}">
-        <span class="product-name">${escapeHtml(product.name || product.sku)}</span>
-        <span class="product-sku">SKU: ${escapeHtml(product.sku)}</span>
+        <span class="product-thumb">${thumb}</span>
+        <span class="product-copy">
+          <span class="product-name">${escapeHtml(product.name || product.sku)}</span>
+          <span class="product-sku">${escapeHtml(product.sku)}</span>
+        </span>
       </button>
-    </li>
-  `).join('');
+    </li>`;
+  }).join('');
 }
 
 function productBlockHtml(sku) {
@@ -328,14 +333,10 @@ async function insertSku(sku) {
 async function loadProducts() {
   const currentRequest = requestId + 1;
   requestId = currentRequest;
-  setStatus(categoryId ? `Loading products in ${categoryPath}…` : 'Loading all products…');
-  const { products, totalCount } = await fetchAllProducts();
+  setStatus('');
+  const { products } = await fetchAllProducts();
   if (currentRequest !== requestId) return;
   renderProducts(products);
-  const scope = categoryId ? `in ${categoryPath}` : 'in the store';
-  setStatus(totalCount
-    ? `${products.length} of ${totalCount} products ${scope}. Select one to add its product details to the document.`
-    : `No products found ${scope}.`);
 }
 
 listEl.addEventListener('click', (event) => {
@@ -366,9 +367,7 @@ categoryEl.addEventListener('click', (event) => {
 
   const button = event.target.closest('button[data-category]');
   if (!button) return;
-  categoryId = button.dataset.category;
-  categoryPath = button.dataset.path || 'All products';
-  categoryPathEl.textContent = categoryPath;
+  categoryId = button.dataset.category || '';
   categoryEl.querySelectorAll('button[aria-pressed="true"]').forEach((selected) => {
     selected.setAttribute('aria-pressed', 'false');
   });

@@ -8,7 +8,7 @@
   </head>
   <body>
     <main class="picker">
-      <form class="picker-search" role="search">
+      <section class="picker-categories">
         <p id="category-filter-label" class="category-filter-title">Product by category</p>
         <div class="category-tools">
           <button type="button" id="category-collapse">Collapse all</button>
@@ -16,12 +16,15 @@
           <button type="button" id="category-expand">Expand all</button>
         </div>
         <div id="category-filter" class="category-tree" aria-labelledby="category-filter-label"></div>
-        <p id="category-path" class="category-path">All products</p>
-        <label for="product-search">Search</label>
-        <input id="product-search" type="search" placeholder="Name or SKU" autocomplete="off">
-      </form>
-      <p id="picker-status" class="picker-status" role="status"></p>
-      <ul id="product-list" class="product-list"></ul>
+      </section>
+      <section class="picker-products">
+        <form class="picker-search" role="search">
+          <label for="product-search">Search by SKU</label>
+          <input id="product-search" type="search" placeholder="SKU or name" autocomplete="off">
+        </form>
+        <p id="picker-status" class="picker-status" role="status" hidden></p>
+        <ul id="product-list" class="product-list"></ul>
+      </section>
     </main>
     <script type="module" src="picker.js"></script>
   </body>
