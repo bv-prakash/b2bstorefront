@@ -17,7 +17,7 @@ Use this picker from the Document Authoring library when a page should show prod
 5. Search by name or SKU if the list is long.
 6. Select a product.
 
-The picker inserts a Product Details block whose **defaultSku** is the selected SKU, and a page metadata **sku** with the same value. The rest of the document is left as authored.
+The picker inserts a Product Details block. In the document it looks like the other blocks: a table named `product-details` with a **selectSku** row. The rest of the document is left as authored.
 
 ## What the page shows
 

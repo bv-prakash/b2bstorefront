@@ -663,8 +663,8 @@ function getSkuFromUrl() {
 }
 
 /**
- * Extracts the defaultSku property from the product-details block element.
- * @returns {string|null} The defaultSku value from the block, or null if not found
+ * Extracts the selected or default SKU from the product-details block element.
+ * @returns {string|null} The SKU from the block, or null if not found
  */
 function readProductDetailsDefaultSku() {
   const productDetailsBlock = document.querySelector('.product-details.block');
@@ -672,7 +672,8 @@ function readProductDetailsDefaultSku() {
   if (productDetailsBlock.dataset.defaultSku) return productDetailsBlock.dataset.defaultSku;
 
   const config = readBlockConfig(productDetailsBlock);
-  return config.defaultsku || config['default-sku'] || null;
+  return config.selectsku || config['select-sku']
+    || config.defaultsku || config['default-sku'] || null;
 }
 
 function getDefaultSkuFromBlock() {

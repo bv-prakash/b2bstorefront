@@ -179,20 +179,9 @@ function renderProducts(products) {
 
 function productBlockHtml(sku) {
   const safeSku = escapeHtml(sku);
-  return `
-    <div class="product-details">
-      <div>
-        <div><p>defaultSku</p></div>
-        <div><p>${safeSku}</p></div>
-      </div>
-    </div>
-    <div class="metadata">
-      <div>
-        <div><p>sku</p></div>
-        <div><p>${safeSku}</p></div>
-      </div>
-    </div>
-  `;
+  // Document Authoring stores blocks as tables. The first row is the block name,
+  // which becomes class="product-details" on the published page.
+  return `<table><tbody><tr><td colspan="2">product-details</td></tr><tr><td><p>selectSku</p></td><td><p>${safeSku}</p></td></tr></tbody></table>`;
 }
 
 async function insertSku(sku) {

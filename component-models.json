@@ -475,6 +475,12 @@
     "fields": [
       {
         "component": "text",
+        "name": "selectSku",
+        "label": "selectSku",
+        "description": "SKU selected for this product details block"
+      },
+      {
+        "component": "text",
         "name": "defaultSku",
         "label": "Default SKU",
         "description": "Optional: Specify a default product SKU if this is a template page"

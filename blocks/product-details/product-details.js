@@ -93,7 +93,8 @@ export default async function decorate(block) {
   const product = eventProduct?.sku ? eventProduct : null;
 
   const blockConfig = readBlockConfig(block);
-  const authoredSku = blockConfig.defaultsku || blockConfig['default-sku'];
+  const authoredSku = blockConfig.selectsku || blockConfig['select-sku']
+    || blockConfig.defaultsku || blockConfig['default-sku'];
   if (authoredSku) block.dataset.defaultSku = authoredSku;
 
   const { 'grid-ordering-enabled': gridOrderingEnabledString = 'false' } = blockConfig;
