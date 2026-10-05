@@ -11,16 +11,23 @@ body {
 
 .picker {
   box-sizing: border-box;
-  display: grid;
-  grid-template-columns: minmax(260px, 34%) minmax(0, 1fr);
-  gap: 20px;
-  align-items: start;
-  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: 100vh;
   padding: 16px;
 }
 
+.picker-controls {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) minmax(280px, 1fr);
+  gap: 24px;
+  align-items: start;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e1e1e1;
+}
+
 .picker-categories,
-.picker-products,
 .picker-search {
   display: flex;
   flex-direction: column;
@@ -61,7 +68,7 @@ body {
 }
 
 .category-tree {
-  max-height: calc(100vh - 88px);
+  max-height: 220px;
   overflow: auto;
   border: 1px solid #d5d5d5;
   border-radius: 4px;
@@ -188,27 +195,20 @@ body {
 }
 
 .picker-search input {
+  width: 100%;
+  box-sizing: border-box;
   border: 1px solid #b5b5b5;
   border-radius: 4px;
   font: inherit;
   padding: 8px 10px;
 }
 
-.picker-status {
-  margin: 0;
-  color: #b00;
-  font-size: 13px;
-}
-
-.picker-status[hidden] {
-  display: none;
-}
-
 .product-list {
   list-style: none;
+  flex: 1;
+  min-height: 0;
   margin: 0;
   padding: 0;
-  max-height: calc(100vh - 88px);
   overflow: auto;
   border: 1px solid #d5d5d5;
   border-radius: 4px;
@@ -284,12 +284,16 @@ body {
 
 @media (max-width: 699px) {
   .picker {
+    height: auto;
+    min-height: 100vh;
+  }
+
+  .picker-controls {
     grid-template-columns: 1fr;
   }
 
-  .category-tree,
   .product-list {
-    max-height: 280px;
+    max-height: 480px;
   }
 }
 

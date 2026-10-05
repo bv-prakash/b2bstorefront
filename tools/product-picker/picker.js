@@ -53,7 +53,6 @@ const CATEGORY_PRODUCTS_QUERY = `query ProductPickerByCategory(
   }
 }`;
 
-const statusEl = document.getElementById('picker-status');
 const listEl = document.getElementById('product-list');
 const searchEl = document.getElementById('product-search');
 const categoryEl = document.getElementById('category-filter');
@@ -63,11 +62,6 @@ let phrase = '';
 let categoryId = '';
 let daActions = null;
 let requestId = 0;
-
-function setStatus(message) {
-  statusEl.hidden = !message;
-  statusEl.textContent = message || '';
-}
 
 function escapeHtml(value) {
   return String(value)
@@ -240,7 +234,6 @@ async function loadCategories() {
   } catch (error) {
     console.error(error);
     renderCategoryTree(null);
-    setStatus('Categories could not be loaded.');
   }
 }
 
@@ -323,17 +316,19 @@ async function insertSku(sku) {
   }
   try {
     await navigator.clipboard.writeText(sku);
-    setStatus(`Copied SKU ${sku}. Open this picker from the library to insert the product details block.`);
   } catch (error) {
     console.error(error);
-    setStatus(`Selected SKU ${sku}`);
   }
+}
+
+function showListError(error) {
+  console.error(error);
+  listEl.innerHTML = `<li class="product-empty">${escapeHtml(error.message)}</li>`;
 }
 
 async function loadProducts() {
   const currentRequest = requestId + 1;
   requestId = currentRequest;
-  setStatus('');
   const { products } = await fetchAllProducts();
   if (currentRequest !== requestId) return;
   renderProducts(products);
@@ -372,10 +367,7 @@ categoryEl.addEventListener('click', (event) => {
     selected.setAttribute('aria-pressed', 'false');
   });
   button.setAttribute('aria-pressed', 'true');
-  loadProducts().catch((error) => {
-    console.error(error);
-    setStatus(error.message);
-  });
+  loadProducts().catch(showListError);
 });
 
 let searchTimer;
@@ -383,10 +375,7 @@ searchEl.addEventListener('input', () => {
   window.clearTimeout(searchTimer);
   searchTimer = window.setTimeout(() => {
     phrase = searchEl.value.trim();
-    loadProducts().catch((error) => {
-      console.error(error);
-      setStatus(error.message);
-    });
+    loadProducts().catch(showListError);
   }, 300);
 });
 
@@ -400,5 +389,5 @@ loadCommerceConfig()
   })
   .catch((error) => {
     console.error(error);
-    setStatus(error.message);
+    showListError(error);
   });

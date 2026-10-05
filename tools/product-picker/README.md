@@ -5,7 +5,7 @@
 ## Guide
 
 1. **Default Category** is the store root and lists every product assigned to this store. It is the same catalog as the root category, so it is not listed a second time.
-2. **Product by category** is the tree on the left. Expand a parent to see the next level of child categories. A product count appears beside a category when the catalog has one. **Search by SKU** sits beside the tree and filters the product list. Categories come from `plugins.picker.rootCategory` in `config.json` (this store uses `2`).
+2. **Product by category** and **Search by SKU** sit on the top row. Expand a parent to see the next level of child categories. A product count appears beside a category when the catalog has one. The product list is below both controls. Categories come from `plugins.picker.rootCategory` in `config.json` (this store uses `2`).
 3. Select a product. A Product Details block is added to the document, with `selectSku` set to that product.
 4. Preview the page to see the product gallery, price, and add to cart. Other content on the document stays on the page.
 
