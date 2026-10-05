@@ -14,6 +14,8 @@
 
 .product-slider--scroll .product-slider-controls {
   display: flex;
+  position: relative;
+  z-index: 1;
 }
 
 .product-slider-prev,

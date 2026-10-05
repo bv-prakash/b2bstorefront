@@ -13,15 +13,11 @@
     "id": "product-details",
     "fields": [
       {
-        "component": "commerce-picker:picker",
+        "component": "product-picker",
         "name": "selectSku",
         "label": "Product",
         "valueType": "string",
-        "description": "Product for this block. Document Authoring uses the Products library. Universal Editor uses this catalog picker.",
-        "commerce-picker": {
-          "selection-mode": "single",
-          "selection-type": "item"
-        }
+        "description": "Browse categories and choose one product."
       },
       {
         "component": "boolean",

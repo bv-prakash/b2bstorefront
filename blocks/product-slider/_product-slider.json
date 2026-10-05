@@ -50,15 +50,11 @@
         "description": "Cards visible from 1200px."
       },
       {
-        "component": "commerce-picker:picker",
+        "component": "product-slider-picker",
         "name": "skus",
         "label": "Products",
         "valueType": "string",
-        "description": "Products in this slider. Document Authoring uses the Product slider library. Universal Editor uses this catalog picker.",
-        "commerce-picker": {
-          "selection-mode": "multiple",
-          "selection-type": "item"
-        }
+        "description": "Browse categories, choose products, and set the slider or grid."
       }
     ]
   }],

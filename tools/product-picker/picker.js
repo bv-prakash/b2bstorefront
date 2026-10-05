@@ -1,6 +1,9 @@
-import { connectAuthoring, escapeHtml, mountCatalog } from './catalog.js';
+import {
+  connectAuthoring, connectUniversalEditor, escapeHtml, mountCatalog,
+} from './catalog.js';
 
 const authoring = connectAuthoring();
+const universalEditor = connectUniversalEditor();
 
 function productBlockHtml(sku) {
   const safeSku = escapeHtml(sku);
@@ -11,6 +14,11 @@ function productBlockHtml(sku) {
 
 mountCatalog({
   async onSelect({ sku }) {
+    const connection = await universalEditor;
+    if (connection?.host?.field?.onChange) {
+      await connection.host.field.onChange(sku);
+      return;
+    }
     const actions = await authoring;
     if (actions) {
       actions.sendHTML(productBlockHtml(sku));

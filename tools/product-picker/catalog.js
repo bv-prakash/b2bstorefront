@@ -72,7 +72,14 @@ export function escapeHtml(value) {
     .replaceAll('"', '&quot;');
 }
 
+export const UE_EXTENSION_ID = 'b2bstorefront-product-picker';
+
+export function isUniversalEditorPicker() {
+  return new URLSearchParams(window.location.search).get('editor') === 'ue';
+}
+
 export function connectAuthoring() {
+  if (isUniversalEditorPicker()) return Promise.resolve(null);
   // eslint-disable-next-line import/no-unresolved
   return import('https://da.live/nx/utils/sdk.js')
     .then(async (sdk) => {
@@ -81,6 +88,22 @@ export function connectAuthoring() {
     })
     .catch((error) => {
       console.error('Document Authoring is unavailable', error);
+      return null;
+    });
+}
+
+export function connectUniversalEditor() {
+  if (!isUniversalEditorPicker()) return Promise.resolve(null);
+  // eslint-disable-next-line import/no-unresolved
+  return import('https://esm.sh/@adobe/uix-guest')
+    .then(async (guest) => {
+      const attach = guest.attach || guest.default?.attach;
+      const connection = await attach({ id: UE_EXTENSION_ID });
+      if (connection?.host?.field?.setHeight) await connection.host.field.setHeight(720);
+      return connection;
+    })
+    .catch((error) => {
+      console.error('Universal Editor is unavailable', error);
       return null;
     });
 }

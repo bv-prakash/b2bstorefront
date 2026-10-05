@@ -18,9 +18,9 @@ Document Authoring inserts a block from the library pages below. Universal Edito
 | Product Details | Products library, `picker.html` | **Product** field on the Product Details block |
 | Product slider | Product slider library, `slider.html` | **Layout**, **Mobile**, **Tablet**, **Desktop**, and **Products** on the Product Slider block |
 
-The Universal Editor fields use the catalog picker (`commerce-picker:picker`). Install the AEM Product Picker extension and point it at this site: `config-base-url` is `https://main--b2bstorefront--bv-prakash.aem.page` and `config-path` is `/config.json`. The category root is already `plugins.picker.rootCategory` in `config.json`.
+In Universal Editor, the **Product** field and the **Products** field open this same category tree, SKU search, and slider or grid choices. `head.html` loads that picker from `tools/product-picker/ue.html`. Layout, mobile, tablet, and desktop stay on the Product Slider block as well.
 
-Universal Editor reads `component-models.json` from the published code branch. Push these model changes before expecting the new fields in the editor.
+Universal Editor reads `component-models.json` and `head.html` from the published code branch. Push these changes before expecting the category picker in the editor.
 
 Shared files, required by whichever picker you keep:
 

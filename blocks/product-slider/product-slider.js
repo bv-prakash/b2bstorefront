@@ -280,6 +280,8 @@ export default async function decorate(block) {
     console.error(error);
   }
 
+  const needsSlider = config.layout === 'slider' && products.length > visibleCount(config);
+  block.classList.toggle('product-slider--scroll', needsSlider);
   block.innerHTML = `<div class="product-slider-controls">
       <button type="button" class="product-slider-prev" aria-label="Previous products">Previous</button>
       <button type="button" class="product-slider-next" aria-label="Next products">Next</button>
@@ -288,6 +290,7 @@ export default async function decorate(block) {
     <div class="product-slider-compare" hidden></div>`;
 
   if (!products.length) {
+    block.classList.remove('product-slider--scroll');
     block.querySelector('.product-slider-track').innerHTML = '<p class="product-slider-empty">No products.</p>';
     return;
   }
@@ -332,14 +335,14 @@ export default async function decorate(block) {
   }));
 
   const updateSlider = () => {
-    const needsSlider = config.layout === 'slider' && products.length > visibleCount(config);
-    block.classList.toggle('product-slider--scroll', needsSlider);
-    if (!needsSlider) return;
+    const scrolling = config.layout === 'slider' && products.length > visibleCount(config);
+    block.classList.toggle('product-slider--scroll', scrolling);
     const previous = block.querySelector('.product-slider-prev');
     const next = block.querySelector('.product-slider-next');
-    const max = track.scrollWidth - track.clientWidth;
+    if (!scrolling || !previous || !next) return;
+    const max = Math.max(0, track.scrollWidth - track.clientWidth);
     previous.disabled = track.scrollLeft <= 1;
-    next.disabled = track.scrollLeft >= max - 1;
+    next.disabled = max > 1 && track.scrollLeft >= max - 1;
   };
 
   const scrollByCard = (direction) => {
@@ -354,5 +357,13 @@ export default async function decorate(block) {
   block.querySelector('.product-slider-next').addEventListener('click', () => scrollByCard(1));
   track.addEventListener('scroll', updateSlider, { passive: true });
   window.addEventListener('resize', updateSlider);
+  if (typeof ResizeObserver !== 'undefined') {
+    const observer = new ResizeObserver(() => updateSlider());
+    observer.observe(track);
+  }
+  track.querySelectorAll('img').forEach((image) => {
+    if (!image.complete) image.addEventListener('load', updateSlider, { once: true });
+  });
   updateSlider();
+  window.requestAnimationFrame(updateSlider);
 }

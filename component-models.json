@@ -474,15 +474,11 @@
     "id": "product-details",
     "fields": [
       {
-        "component": "commerce-picker:picker",
+        "component": "product-picker",
         "name": "selectSku",
         "label": "Product",
         "valueType": "string",
-        "description": "Product for this block. Document Authoring uses the Products library. Universal Editor uses this catalog picker.",
-        "commerce-picker": {
-          "selection-mode": "single",
-          "selection-type": "item"
-        }
+        "description": "Browse categories and choose one product."
       },
       {
         "component": "boolean",
@@ -573,15 +569,11 @@
         "description": "Cards visible from 1200px."
       },
       {
-        "component": "commerce-picker:picker",
+        "component": "product-slider-picker",
         "name": "skus",
         "label": "Products",
         "valueType": "string",
-        "description": "Products in this slider. Document Authoring uses the Product slider library. Universal Editor uses this catalog picker.",
-        "commerce-picker": {
-          "selection-mode": "multiple",
-          "selection-type": "item"
-        }
+        "description": "Browse categories, choose products, and set the slider or grid."
       }
     ]
   },
