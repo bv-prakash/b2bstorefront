@@ -3,6 +3,7 @@ import {
 } from '@dropins/tools/components.js';
 import { h } from '@dropins/tools/preact.js';
 import { events } from '@dropins/tools/event-bus.js';
+import { initializers } from '@dropins/tools/initializer.js';
 import { tryRenderAemAssetsImage } from '@dropins/tools/lib/aem/assets.js';
 import * as pdpApi from '@dropins/storefront-pdp/api.js';
 import { render as pdpRendered } from '@dropins/storefront-pdp/render.js';
@@ -87,18 +88,76 @@ function formatNumericAttributeValue(value) {
   return new Intl.NumberFormat(document.documentElement.lang).format(Number(trimmed));
 }
 
-export default async function decorate(block) {
-  const eventProduct = events.lastPayload('pdp/data') ?? null;
-  // bug: the pdp sends an object with event data even if product is not found.
-  const product = eventProduct?.sku ? eventProduct : null;
+/**
+ * Loads one selected SKU into its own PDP scope.
+ * The drop-in otherwise keeps a single product for the whole page, so a second
+ * product-details block would render the first SKU.
+ * @param {string} sku
+ * @returns {Promise<{scope: string, product: Object|null}>}
+ */
+async function loadSelectedProduct(sku) {
+  const scope = `select-sku-${sku}`;
+  const labels = await fetchPlaceholders('placeholders/pdp.json');
+  const fetched = await pdpApi.fetchProductData(sku, {
+    skipTransform: true,
+    optionsUIDs: [],
+  });
 
+  await initializers.mountImmediately(pdpApi.initialize, {
+    scope,
+    sku,
+    optionsUIDs: [],
+    langDefinitions: { default: { ...labels } },
+    models: {
+      ProductDetails: {
+        initialData: fetched?.sku ? { ...fetched } : null,
+      },
+    },
+    acdl: false,
+    persistURLParams: false,
+  });
+
+  const scopedProduct = events.lastPayload('pdp/data', { scope });
+  return {
+    scope,
+    product: scopedProduct?.sku ? scopedProduct : null,
+  };
+}
+
+export default async function decorate(block) {
   const blockConfig = readBlockConfig(block);
   const authoredSku = blockConfig.selectsku || blockConfig['select-sku']
     || blockConfig.defaultsku || blockConfig['default-sku'];
   if (authoredSku) block.dataset.defaultSku = authoredSku;
 
-  const { 'grid-ordering-enabled': gridOrderingEnabledString = 'false' } = blockConfig;
-  const gridOrderingEnabled = gridOrderingEnabledString === 'true';
+  const selectedSku = blockConfig.selectsku || blockConfig['select-sku'] || '';
+  let scope;
+  let product;
+  if (selectedSku) {
+    ({ scope, product } = await loadSelectedProduct(selectedSku));
+  } else {
+    const eventProduct = events.lastPayload('pdp/data') ?? null;
+    // bug: the pdp sends an object with event data even if product is not found.
+    product = eventProduct?.sku ? eventProduct : null;
+  }
+
+  if (selectedSku && !product) {
+    const message = document.createElement('p');
+    message.textContent = `Product ${selectedSku} is not available.`;
+    block.replaceChildren(message);
+    return;
+  }
+
+  const productProps = scope ? { scope, initialData: product } : {};
+  const optionProps = scope
+    ? { scope, initialData: { data: product, optionsUIDs: product?.optionUIDs ?? [] } }
+    : {};
+  const pdpEventOptions = scope ? { eager: true, scope } : { eager: true };
+
+  const authoredGridOrdering = blockConfig['grid-ordering-enabled'];
+  const gridOrderingEnabled = authoredGridOrdering
+    ? authoredGridOrdering === 'true'
+    : !!selectedSku;
 
   // Grid Ordering B2B feature (Quick Order Drop-in) - enabled only for Configurable Products
   const isConfigurableProduct = (product?.productType === 'complex' || !!product?.externalParentId) && !product?.isBundle;
@@ -212,6 +271,7 @@ export default async function decorate(block) {
   ] = await Promise.all([
     // Gallery (Mobile)
     pdpRendered.render(ProductGallery, {
+      ...productProps,
       controls: 'dots',
       arrows: true,
       peak: false,
@@ -227,6 +287,7 @@ export default async function decorate(block) {
 
     // Gallery (Desktop)
     pdpRendered.render(ProductGallery, {
+      ...productProps,
       controls: 'thumbnailsColumn',
       arrows: true,
       peak: true,
@@ -241,16 +302,17 @@ export default async function decorate(block) {
     })($gallery),
 
     // Header
-    pdpRendered.render(ProductHeader, {})($header),
+    pdpRendered.render(ProductHeader, { ...productProps })($header),
 
     // Price
-    pdpRendered.render(ProductPrice, {})($price),
+    pdpRendered.render(ProductPrice, { ...productProps })($price),
 
     // Short Description
-    pdpRendered.render(ProductShortDescription, {})($shortDescription),
+    pdpRendered.render(ProductShortDescription, { ...productProps })($shortDescription),
 
     // Configuration - Swatches
     pdpRendered.render(ProductOptions, {
+      ...optionProps,
       hideSelectedValue: false,
       slots: {
         SwatchImage: (ctx) => {
@@ -263,16 +325,17 @@ export default async function decorate(block) {
     })($options),
 
     // Configuration - Quantity
-    pdpRendered.render(ProductQuantity, {})($quantity),
+    pdpRendered.render(ProductQuantity, { ...productProps })($quantity),
 
     // Configuration - Gift Card Options
-    pdpRendered.render(ProductGiftCardOptions, {})($giftCardOptions),
+    pdpRendered.render(ProductGiftCardOptions, { ...productProps })($giftCardOptions),
 
     // Description
-    pdpRendered.render(ProductDescription, {})($description),
+    pdpRendered.render(ProductDescription, { ...productProps })($description),
 
     // Attributes
     pdpRendered.render(ProductAttributes, {
+      ...productProps,
       formatValue: formatNumericAttributeValue,
     })($attributes),
 
@@ -448,8 +511,8 @@ export default async function decorate(block) {
         $addToCartStatus.textContent = buttonActionText ?? 'Adding to Cart';
 
         // get the current selection values
-        const values = pdpApi.getProductConfigurationValues();
-        const valid = pdpApi.isProductConfigurationValid();
+        const values = pdpApi.getProductConfigurationValues(scope ? { scope } : undefined);
+        const valid = pdpApi.isProductConfigurationValid(scope ? { scope } : undefined);
 
         // add or update the product in the cart
         if (valid) {
@@ -522,7 +585,7 @@ export default async function decorate(block) {
   events.on('pdp/data', (data) => {
     isOutOfStock = data?.inStock === false;
     addToCart.setProps((prev) => ({ ...prev, disabled: isOutOfStock }));
-  }, { eager: true });
+  }, pdpEventOptions);
 
   events.on('pdp/valid', (valid) => {
     // update add to cart button disabled state based on product selection validity and stock status
@@ -530,7 +593,7 @@ export default async function decorate(block) {
       ...prev,
       disabled: isOutOfStock || !valid,
     }));
-  }, { eager: true });
+  }, pdpEventOptions);
 
   // Grid Ordering flow - Sync state and update Add To Cart button text on variants selection change
   events.on('quick-order/grid-ordering-selected-variants', (selectedVariants) => {
@@ -563,7 +626,7 @@ export default async function decorate(block) {
 
   // Handle option changes
   events.on('pdp/values', async () => {
-    const configValues = pdpApi.getProductConfigurationValues();
+    const configValues = pdpApi.getProductConfigurationValues(scope ? { scope } : undefined);
 
     // Check URL parameter for empty optionsUIDs
     const urlOptionsUIDs = urlParams.get('optionsUIDs');
@@ -591,7 +654,7 @@ export default async function decorate(block) {
         },
       }));
     }
-  }, { eager: true });
+  }, pdpEventOptions);
 
   events.on('wishlist/alert', ({
     action,
@@ -661,13 +724,13 @@ export default async function decorate(block) {
         gridOrderingVariants = initQuickOrderGridOrdering(product, variants);
       }
 
-      setJsonLdProduct(product, variants);
-      setMetaTags(product);
-      document.title = product.name;
+      if (!scope) {
+        setJsonLdProduct(product, variants);
+        setMetaTags(product);
+        document.title = product.name;
+      }
     }
   }, { eager: true });
-
-  return Promise.resolve();
 }
 
 function setJsonLdProduct(product, variants) {

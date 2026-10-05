@@ -18,37 +18,100 @@ body {
   padding: 16px;
 }
 
-.picker-guide h1 {
-  margin: 0 0 8px;
-  font-size: 20px;
-}
-
-.picker-guide ol {
-  margin: 0;
-  padding-left: 20px;
-}
-
-.picker-guide li + li {
-  margin-top: 4px;
-}
-
 .picker-search {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-.picker-search select {
-  border: 1px solid #b5b5b5;
-  border-radius: 4px;
+.category-filter-title,
+.picker-search label {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.category-path {
+  margin: 0;
+  color: #0d66c2;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.category-tree {
+  max-height: 320px;
+  overflow: auto;
+  border: 1px solid #d0d0d0;
+  border-radius: 8px;
+  padding: 8px;
+  background: #f7f7f7;
+}
+
+.category-tree ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.category-tree ul ul {
+  margin: 2px 0 6px 14px;
+  padding-left: 14px;
+  border-left: 2px solid #8eb6e3;
+}
+
+.category-tree li {
+  position: relative;
+}
+
+.category-tree ul ul > li::before {
+  content: "";
+  position: absolute;
+  left: -16px;
+  top: 18px;
+  width: 14px;
+  border-top: 2px solid #8eb6e3;
+}
+
+.category-tree button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  width: 100%;
+  margin: 1px 0;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
   font: inherit;
-  padding: 8px 10px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.category-tree button:hover,
+.category-tree button:focus-visible {
+  border-color: #8eb6e3;
   background: #fff;
 }
 
-.picker-search label {
-  font-size: 14px;
+.category-tree button[aria-pressed="true"] {
+  border-color: #1473e6;
+  background: #e8f2fc;
+}
+
+.category-tree .has-children > button .category-name {
   font-weight: 700;
+}
+
+.category-under {
+  color: #5c6770;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.category-under::before {
+  content: "under ";
 }
 
 .picker-search input {

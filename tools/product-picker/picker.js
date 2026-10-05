@@ -5,7 +5,8 @@ const CATEGORIES_QUERY = `query PickerCategories($id: String!) {
   categories(ids: [$id], subtree: { depth: 4, startLevel: 1 }) {
     id
     name
-    level
+    parentId
+    path
   }
 }`;
 
@@ -39,10 +40,12 @@ const statusEl = document.getElementById('picker-status');
 const listEl = document.getElementById('product-list');
 const searchEl = document.getElementById('product-search');
 const categoryEl = document.getElementById('category-filter');
+const categoryPathEl = document.getElementById('category-path');
 
 let commerce = null;
 let phrase = '';
 let categoryId = '';
+let categoryPath = 'All products';
 let daActions = null;
 let requestId = 0;
 
@@ -108,22 +111,73 @@ async function graphql(query, variables) {
   return payload.data;
 }
 
-async function loadCategories() {
-  const rootId = commerce.plugins?.picker?.rootCategory || '2';
-  try {
-    const data = await graphql(CATEGORIES_QUERY, { id: String(rootId) });
-    const categories = (data?.categories || [])
-      .filter((category) => category?.id && category?.name)
-      .sort((a, b) => a.name.localeCompare(b.name));
-    categories.forEach((category) => {
-      const option = document.createElement('option');
-      option.value = category.id;
-      const indent = Math.max(0, (category.level || 1) - 1);
-      option.textContent = `${'· '.repeat(indent)}${category.name}`;
-      categoryEl.append(option);
+function sortBranches(nodes) {
+  nodes.sort((a, b) => a.name.localeCompare(b.name));
+  nodes.forEach((node) => sortBranches(node.children));
+}
+
+function buildCategoryTree(categories, rootId) {
+  const nodes = new Map();
+  categories.forEach((category) => {
+    nodes.set(String(category.id), {
+      id: String(category.id),
+      name: category.name.trim(),
+      parentId: String(category.parentId || ''),
+      children: [],
     });
+  });
+
+  nodes.forEach((node) => {
+    const parent = nodes.get(node.parentId);
+    if (parent && node.id !== rootId) parent.children.push(node);
+  });
+
+  const root = nodes.get(rootId);
+  const branches = root ? root.children : [...nodes.values()].filter((node) => node.id !== rootId);
+  sortBranches(branches);
+  return branches;
+}
+
+function categoryBranchHtml(nodes, parentPath) {
+  if (!nodes.length) return '';
+  return `<ul>${nodes.map((node) => {
+    const trail = parentPath ? `${parentPath} / ${node.name}` : node.name;
+    const childMarkup = categoryBranchHtml(node.children, trail);
+    return `<li class="${node.children.length ? 'has-children' : 'is-leaf'}">
+      <button type="button" data-category="${escapeHtml(node.id)}" data-path="${escapeHtml(trail)}" aria-pressed="false">
+        <span class="category-name">${escapeHtml(node.name)}</span>
+        ${parentPath ? `<span class="category-under">${escapeHtml(parentPath)}</span>` : ''}
+      </button>
+      ${childMarkup}
+    </li>`;
+  }).join('')}</ul>`;
+}
+
+function renderCategoryTree(categories, rootId) {
+  const branches = buildCategoryTree(categories, rootId);
+  categoryEl.innerHTML = `<ul class="category-roots">
+    <li class="is-leaf">
+      <button type="button" data-category="" data-path="All products" aria-pressed="true">
+        <span class="category-name">All products</span>
+      </button>
+    </li>
+  </ul>${categoryBranchHtml(branches, '')}`;
+}
+
+async function loadCategories() {
+  const rootId = String(commerce.plugins?.picker?.rootCategory || '2');
+  try {
+    const data = await graphql(CATEGORIES_QUERY, { id: rootId });
+    const categories = (data?.categories || [])
+      .filter((category) => category?.id && category?.name);
+    renderCategoryTree(categories, rootId);
   } catch (error) {
     console.error(error);
+    categoryEl.innerHTML = `<ul class="category-roots"><li>
+      <button type="button" data-category="" data-path="All products" aria-pressed="true">
+        <span class="category-name">All products</span>
+      </button>
+    </li></ul>`;
     setStatus('Categories could not be loaded. All products is still available.');
   }
 }
@@ -181,7 +235,7 @@ function productBlockHtml(sku) {
   const safeSku = escapeHtml(sku);
   // Document Authoring stores blocks as tables. The first row is the block name,
   // which becomes class="product-details" on the published page.
-  return `<table><tbody><tr><td colspan="2">product-details</td></tr><tr><td><p>selectSku</p></td><td><p>${safeSku}</p></td></tr></tbody></table>`;
+  return `<table><tbody><tr><td colspan="2">product-details</td></tr><tr><td><p>selectSku</p></td><td><p>${safeSku}</p></td></tr><tr><td><p>Grid Ordering Enabled</p></td><td><p>true</p></td></tr></tbody></table>`;
 }
 
 async function insertSku(sku) {
@@ -202,11 +256,11 @@ async function insertSku(sku) {
 async function loadProducts() {
   const currentRequest = requestId + 1;
   requestId = currentRequest;
-  setStatus(categoryId ? 'Loading products in this category…' : 'Loading all products…');
+  setStatus(categoryId ? `Loading products in ${categoryPath}…` : 'Loading all products…');
   const { products, totalCount } = await fetchAllProducts();
   if (currentRequest !== requestId) return;
   renderProducts(products);
-  const scope = categoryId ? 'in this category' : 'in the store';
+  const scope = categoryId ? `in ${categoryPath}` : 'in the store';
   setStatus(totalCount
     ? `${products.length} of ${totalCount} products ${scope}. Select one to add its product details to the document.`
     : `No products found ${scope}.`);
@@ -218,8 +272,20 @@ listEl.addEventListener('click', (event) => {
   insertSku(button.dataset.sku);
 });
 
-categoryEl.addEventListener('change', () => {
-  categoryId = categoryEl.value;
+document.querySelector('.picker-search').addEventListener('submit', (event) => {
+  event.preventDefault();
+});
+
+categoryEl.addEventListener('click', (event) => {
+  const button = event.target.closest('button[data-category]');
+  if (!button) return;
+  categoryId = button.dataset.category;
+  categoryPath = button.dataset.path || 'All products';
+  categoryPathEl.textContent = categoryPath;
+  categoryEl.querySelectorAll('button[aria-pressed="true"]').forEach((selected) => {
+    selected.setAttribute('aria-pressed', 'false');
+  });
+  button.setAttribute('aria-pressed', 'true');
   loadProducts().catch((error) => {
     console.error(error);
     setStatus(error.message);

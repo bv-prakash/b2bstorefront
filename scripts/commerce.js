@@ -718,7 +718,9 @@ export function getProductLink(urlKey, sku) {
 }
 
 /**
- * Gets the product SKU from page metadata, the product-details block, or the URL.
+ * Gets the product SKU from the product-details block, page metadata, or the URL.
+ * A selected SKU on the block is used before page metadata, so two blocks on
+ * one page are not forced to the same metadata SKU.
  * @returns {string|null} The SKU, or null if not found
  */
 export function getProductSku() {
@@ -726,7 +728,7 @@ export function getProductSku() {
     return getDefaultSkuFromBlock();
   }
 
-  return getMetadata('sku') || readProductDetailsDefaultSku() || getSkuFromUrl();
+  return readProductDetailsDefaultSku() || getMetadata('sku') || getSkuFromUrl();
 }
 
 /**

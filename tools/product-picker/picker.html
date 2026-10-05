@@ -8,20 +8,10 @@
   </head>
   <body>
     <main class="picker">
-      <section class="picker-guide">
-        <h1>Choose a product</h1>
-        <ol>
-          <li><strong>All products</strong> lists every product assigned to this store.</li>
-          <li><strong>A category</strong> lists only the products in that category.</li>
-          <li>Select a product. A Product Details block is added to the document, with selectSku set to that product.</li>
-          <li>Preview the page to see the product gallery, price, and add to cart. Other content on the document stays on the page.</li>
-        </ol>
-      </section>
       <form class="picker-search" role="search">
-        <label for="category-filter">Products</label>
-        <select id="category-filter">
-          <option value="">All products</option>
-        </select>
+        <p id="category-filter-label" class="category-filter-title">Product by category</p>
+        <div id="category-filter" class="category-tree" aria-labelledby="category-filter-label"></div>
+        <p id="category-path" class="category-path">All products</p>
         <label for="product-search">Search</label>
         <input id="product-search" type="search" placeholder="Name or SKU" autocomplete="off">
       </form>

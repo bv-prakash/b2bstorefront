@@ -8,6 +8,7 @@ import {
   fetchPlaceholders,
   getOptionsUIDsFromUrl,
   getProductSku,
+  isProductTemplate,
   IS_UE,
   loadErrorPage,
   preloadFile,
@@ -96,17 +97,20 @@ await initializeDropin(async () => {
   // Inherit Fetch GraphQL Instance (Catalog Service)
   setEndpoint(CS_FETCH_GRAPHQL);
 
-  // Preload PDP assets immediately when this module is imported
-  preloadPDPAssets();
-
   // Fetch product data
   const sku = getProductSku();
   const optionsUIDs = getOptionsUIDsFromUrl();
 
-  // If we cannot find a sku, and we are not in UE, there's a problem.
+  // A product template with no SKU cannot render. A product-details block on
+  // any other page, including the footer of a product list page, carries its
+  // own selectSku and must not replace the page with a 404.
   if (!sku && !IS_UE) {
+    if (!isProductTemplate()) return undefined;
     return loadErrorPage();
   }
+
+  // Preload PDP assets immediately when this module is imported
+  preloadPDPAssets();
 
   const getProductData = async (skipTransform) => {
     const data = await fetchProductData(sku, { optionsUIDs, skipTransform })
