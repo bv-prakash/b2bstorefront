@@ -444,6 +444,16 @@
           }
         },
         {
+          "title": "Commerce Newsletter",
+          "id": "commerce-newsletter",
+          "model": "commerce-newsletter",
+          "plugins": {
+            "da": {
+              "type": "key-value-block"
+            }
+          }
+        },
+        {
           "title": "Commerce Order Comments",
           "id": "commerce-order-comments",
           "model": "commerce-order-comments",

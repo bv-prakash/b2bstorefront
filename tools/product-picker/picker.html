@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Products</title>
+    <link rel="stylesheet" href="picker.css">
+  </head>
+  <body>
+    <main class="picker">
+      <form class="picker-search" role="search">
+        <label for="product-search">Search products</label>
+        <input id="product-search" type="search" placeholder="Name or SKU" autocomplete="off">
+      </form>
+      <p id="picker-status" class="picker-status" role="status"></p>
+      <ul id="product-list" class="product-list"></ul>
+    </main>
+    <script type="module" src="picker.js"></script>
+  </body>
+</html>

@@ -1,0 +1,89 @@
+:root {
+  color-scheme: light;
+  font-family: adobe-clean, "Source Sans Pro", sans-serif;
+}
+
+body {
+  margin: 0;
+  background: #fff;
+  color: #222;
+}
+
+.picker {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 100vh;
+  padding: 16px;
+}
+
+.picker-search {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.picker-search label {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.picker-search input {
+  border: 1px solid #b5b5b5;
+  border-radius: 4px;
+  font: inherit;
+  padding: 8px 10px;
+}
+
+.picker-status {
+  margin: 0;
+  min-height: 1.2em;
+  color: #444;
+}
+
+.product-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.product-list button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d5d5d5;
+  border-radius: 6px;
+  background: #fafafa;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.product-list button:hover,
+.product-list button:focus-visible {
+  border-color: #1473e6;
+  background: #f5f9ff;
+}
+
+.product-name {
+  font-weight: 700;
+}
+
+.product-sku {
+  color: #555;
+  font-size: 13px;
+}
+
+.picker-more {
+  align-self: flex-start;
+  font: inherit;
+  padding: 8px 12px;
+  cursor: pointer;
+}

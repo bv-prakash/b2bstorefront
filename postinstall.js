@@ -31,6 +31,34 @@ fs.readdirSync('node_modules/@dropins', { withFileTypes: true }).forEach((file) 
   });
 });
 
+// Custom drop-ins published outside the @dropins scope.
+// Copy the built dist so the browser can load it from scripts/__dropins__.
+const customDropins = [
+  {
+    name: '@prakash.gurung/commerce-newsletter',
+    from: path.join('node_modules', '@prakash.gurung', 'commerce-newsletter', 'dist'),
+    to: path.join(dropinsDir, 'commerce-newsletter'),
+  },
+];
+
+customDropins.forEach((dropin) => {
+  if (!dependencies[dropin.name]) {
+    return;
+  }
+
+  if (!fs.existsSync(dropin.from)) {
+    console.warn(`Warning: custom drop-in not found at ${dropin.from}`);
+    return;
+  }
+
+  fs.cpSync(dropin.from, dropin.to, {
+    recursive: true,
+    filter: (src) => !src.endsWith('package.json')
+      && !src.endsWith('.map')
+      && !src.endsWith('.d.ts'),
+  });
+});
+
 // Other files to copy
 [
   { from: '@adobe/magento-storefront-event-collector/dist/index.js', to: 'commerce-events-collector.js' },

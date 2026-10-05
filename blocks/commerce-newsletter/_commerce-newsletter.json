@@ -1,0 +1,36 @@
+{
+  "definitions": [{
+    "title": "Commerce Newsletter",
+    "id": "commerce-newsletter",
+    "model": "commerce-newsletter",
+    "plugins": {
+      "da": {
+        "type": "key-value-block"
+      }
+    }
+  }],
+  "models": [{
+    "id": "commerce-newsletter",
+    "fields": [
+      {
+        "component": "text",
+        "name": "title",
+        "label": "Title",
+        "value": "Subscribe to our newsletter"
+      },
+      {
+        "component": "text",
+        "name": "description",
+        "label": "Description",
+        "value": "Be the first to hear about new products, offers, and stories."
+      },
+      {
+        "component": "text",
+        "name": "placeholder",
+        "label": "Email placeholder",
+        "value": "Enter your email address"
+      }
+    ]
+  }],
+  "filters": []
+}

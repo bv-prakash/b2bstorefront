@@ -10,6 +10,13 @@ module.exports = {
     sourceType: 'module',
     requireConfigFile: false,
   },
+  settings: {
+    'import/core-modules': [
+      '@prakash.gurung/commerce-newsletter/api.js',
+      '@prakash.gurung/commerce-newsletter/render.js',
+      '@prakash.gurung/commerce-newsletter/containers/NewsletterContainer.js',
+    ],
+  },
   rules: {
     'import/extensions': ['error', { js: 'always' }], // require js file extensions in imports
     'import/prefer-default-export': 'off', // allow named exports for single exports
