@@ -8,8 +8,21 @@
   </head>
   <body>
     <main class="picker">
+      <section class="picker-guide">
+        <h1>Choose a product</h1>
+        <ol>
+          <li><strong>All products</strong> lists every product assigned to this store.</li>
+          <li><strong>A category</strong> lists only the products in that category.</li>
+          <li>Select a product. Its SKU is written on the document inside a Product Details block.</li>
+          <li>The published page renders the product details for that SKU. Other content on the document stays on the page.</li>
+        </ol>
+      </section>
       <form class="picker-search" role="search">
-        <label for="product-search">Search products</label>
+        <label for="category-filter">Products</label>
+        <select id="category-filter">
+          <option value="">All products</option>
+        </select>
+        <label for="product-search">Search</label>
         <input id="product-search" type="search" placeholder="Name or SKU" autocomplete="off">
       </form>
       <p id="picker-status" class="picker-status" role="status"></p>

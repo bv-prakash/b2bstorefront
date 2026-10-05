@@ -666,6 +666,15 @@ function getSkuFromUrl() {
  * Extracts the defaultSku property from the product-details block element.
  * @returns {string|null} The defaultSku value from the block, or null if not found
  */
+function readProductDetailsDefaultSku() {
+  const productDetailsBlock = document.querySelector('.product-details.block');
+  if (!productDetailsBlock) return null;
+  if (productDetailsBlock.dataset.defaultSku) return productDetailsBlock.dataset.defaultSku;
+
+  const config = readBlockConfig(productDetailsBlock);
+  return config.defaultsku || config['default-sku'] || null;
+}
+
 function getDefaultSkuFromBlock() {
   const productDetailsBlock = document.querySelector('.product-details.block');
   if (!productDetailsBlock) {
@@ -673,12 +682,12 @@ function getDefaultSkuFromBlock() {
     return null;
   }
 
-  const config = readBlockConfig(productDetailsBlock);
-  if (!config.defaultsku) {
+  const sku = readProductDetailsDefaultSku();
+  if (!sku) {
     console.warn('No defaultSku found in product-details block');
     return null;
   }
-  return config.defaultsku;
+  return sku;
 }
 
 /**
@@ -708,15 +717,15 @@ export function getProductLink(urlKey, sku) {
 }
 
 /**
- * Gets the product SKU from metadata or URL fallback.
- * @returns {string|null} The SKU from metadata or URL, or null if not found
+ * Gets the product SKU from page metadata, the product-details block, or the URL.
+ * @returns {string|null} The SKU, or null if not found
  */
 export function getProductSku() {
   if (isProductTemplate() && (IS_UE || IS_DA)) {
     return getDefaultSkuFromBlock();
   }
 
-  return getMetadata('sku') || getSkuFromUrl();
+  return getMetadata('sku') || readProductDetailsDefaultSku() || getSkuFromUrl();
 }
 
 /**

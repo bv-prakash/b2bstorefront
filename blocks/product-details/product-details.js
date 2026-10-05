@@ -92,7 +92,11 @@ export default async function decorate(block) {
   // bug: the pdp sends an object with event data even if product is not found.
   const product = eventProduct?.sku ? eventProduct : null;
 
-  const { 'grid-ordering-enabled': gridOrderingEnabledString = 'false' } = readBlockConfig(block);
+  const blockConfig = readBlockConfig(block);
+  const authoredSku = blockConfig.defaultsku || blockConfig['default-sku'];
+  if (authoredSku) block.dataset.defaultSku = authoredSku;
+
+  const { 'grid-ordering-enabled': gridOrderingEnabledString = 'false' } = blockConfig;
   const gridOrderingEnabled = gridOrderingEnabledString === 'true';
 
   // Grid Ordering B2B feature (Quick Order Drop-in) - enabled only for Configurable Products
