@@ -5,7 +5,7 @@
 ## Guide
 
 1. **All products** lists every product assigned to this store.
-2. **Product by category** lists the products in the category you select. Child categories sit on a branch under their parent. Categories come from `plugins.picker.rootCategory` in `config.json` (this store uses `2`).
+2. **Product by category** opens the category tree. Expand a parent to see the next level of child categories. A product count appears beside a category when the catalog has one. Categories come from `plugins.picker.rootCategory` in `config.json` (this store uses `2`).
 3. Select a product. A Product Details block is added to the document, with `selectSku` set to that product.
 4. Preview the page to see the product gallery, price, and add to cart. Other content on the document stays on the page.
 

@@ -6,9 +6,26 @@ const CATEGORIES_QUERY = `query PickerCategories($id: String!) {
     id
     name
     parentId
-    path
+    position
   }
 }`;
+
+const CATEGORY_COUNTS_QUERY = `query CategoryCounts {
+  productSearch(phrase: "", current_page: 1, page_size: 1) {
+    total_count
+    facets {
+      attribute
+      buckets {
+        ... on CategoryBucket {
+          id
+          count
+        }
+      }
+    }
+  }
+}`;
+
+const FOLDER_ICON = '<svg class="category-folder" viewBox="0 0 16 14" aria-hidden="true"><path fill="#e2b007" d="M1 2.5h5.2l1.3 1.6H15V12H1z"/><path fill="#f6d56a" d="M1 5.2h14V12H1z"/></svg>';
 
 const PRODUCTS_QUERY = `query ProductPicker($phrase: String!, $currentPage: Int!, $pageSize: Int!) {
   productSearch(phrase: $phrase, current_page: $currentPage, page_size: $pageSize) {
@@ -112,17 +129,21 @@ async function graphql(query, variables) {
 }
 
 function sortBranches(nodes) {
-  nodes.sort((a, b) => a.name.localeCompare(b.name));
+  nodes.sort((a, b) => (a.position - b.position) || a.name.localeCompare(b.name));
   nodes.forEach((node) => sortBranches(node.children));
 }
 
-function buildCategoryTree(categories, rootId) {
+function buildCategoryTree(categories, rootId, counts, totalCount) {
   const nodes = new Map();
   categories.forEach((category) => {
-    nodes.set(String(category.id), {
-      id: String(category.id),
+    const id = String(category.id);
+    const foundCount = counts.get(id) ?? (id === rootId ? totalCount : null);
+    nodes.set(id, {
+      id,
       name: category.name.trim(),
       parentId: String(category.parentId || ''),
+      position: category.position ?? 0,
+      count: Number.isInteger(foundCount) ? foundCount : null,
       children: [],
     });
   });
@@ -132,52 +153,103 @@ function buildCategoryTree(categories, rootId) {
     if (parent && node.id !== rootId) parent.children.push(node);
   });
 
-  const root = nodes.get(rootId);
-  const branches = root ? root.children : [...nodes.values()].filter((node) => node.id !== rootId);
-  sortBranches(branches);
-  return branches;
+  nodes.forEach((node) => sortBranches(node.children));
+  return nodes.get(rootId) || null;
 }
 
-function categoryBranchHtml(nodes, parentPath) {
-  if (!nodes.length) return '';
-  return `<ul>${nodes.map((node) => {
-    const trail = parentPath ? `${parentPath} / ${node.name}` : node.name;
-    const childMarkup = categoryBranchHtml(node.children, trail);
-    return `<li class="${node.children.length ? 'has-children' : 'is-leaf'}">
-      <button type="button" data-category="${escapeHtml(node.id)}" data-path="${escapeHtml(trail)}" aria-pressed="false">
+function categoryNodeHtml(node, parentPath, level) {
+  const trail = parentPath ? `${parentPath} / ${node.name}` : node.name;
+  const count = node.count === null ? '' : `<span class="category-count">(${node.count})</span>`;
+  const hasChildren = node.children.length > 0;
+  const open = level === 0;
+  const children = hasChildren
+    ? `<ul>${node.children.map((child) => categoryNodeHtml(child, trail, level + 1)).join('')}</ul>`
+    : '';
+  const toggle = hasChildren
+    ? `<button type="button" class="category-toggle" aria-expanded="${open}" aria-label="${open ? 'Collapse' : 'Expand'} ${escapeHtml(node.name)}"></button>`
+    : '<span class="category-toggle-spacer" aria-hidden="true"></span>';
+
+  return `<li class="category-node${hasChildren ? ' has-children' : ' is-leaf'}${open ? ' is-open' : ''}" data-level="${level}">
+    <div class="category-row">
+      ${toggle}
+      <button type="button" class="category-select" data-category="${escapeHtml(node.id)}" data-path="${escapeHtml(trail)}" aria-pressed="false">
+        ${FOLDER_ICON}
         <span class="category-name">${escapeHtml(node.name)}</span>
-        ${parentPath ? `<span class="category-under">${escapeHtml(parentPath)}</span>` : ''}
+        ${count}
       </button>
-      ${childMarkup}
-    </li>`;
-  }).join('')}</ul>`;
+    </div>
+    ${children}
+  </li>`;
 }
 
-function renderCategoryTree(categories, rootId) {
-  const branches = buildCategoryTree(categories, rootId);
-  categoryEl.innerHTML = `<ul class="category-roots">
-    <li class="is-leaf">
-      <button type="button" data-category="" data-path="All products" aria-pressed="true">
-        <span class="category-name">All products</span>
-      </button>
-    </li>
-  </ul>${categoryBranchHtml(branches, '')}`;
+function allProductsHtml(totalCount) {
+  const count = Number.isInteger(totalCount) ? `<span class="category-count">(${totalCount})</span>` : '';
+  return `<div class="category-row category-all">
+    <span class="category-toggle-spacer" aria-hidden="true"></span>
+    <button type="button" class="category-select" data-category="" data-path="All products" aria-pressed="true">
+      ${FOLDER_ICON}
+      <span class="category-name">All products</span>
+      ${count}
+    </button>
+  </div>`;
+}
+
+function renderCategoryTree(root, totalCount) {
+  const tree = root ? `<ul class="category-branches">${categoryNodeHtml(root, '', 0)}</ul>` : '';
+  categoryEl.innerHTML = `${allProductsHtml(totalCount)}${tree}`;
+}
+
+function setTreeOpen(open) {
+  categoryEl.querySelectorAll('.has-children').forEach((node) => {
+    node.classList.toggle('is-open', open);
+    const toggle = node.querySelector(':scope > .category-row .category-toggle');
+    if (!toggle) return;
+    toggle.setAttribute('aria-expanded', String(open));
+    const name = node.querySelector(':scope > .category-row .category-name')?.textContent || 'category';
+    toggle.setAttribute('aria-label', `${open ? 'Collapse' : 'Expand'} ${name}`);
+  });
+}
+
+async function loadCategoryCounts() {
+  try {
+    const data = await graphql(CATEGORY_COUNTS_QUERY, {});
+    const search = data?.productSearch;
+    const facet = (search?.facets || []).find((item) => item.attribute === 'categories');
+    const counts = new Map();
+    (facet?.buckets || []).forEach((bucket) => {
+      if (bucket?.id != null && Number.isInteger(bucket.count)) {
+        counts.set(String(bucket.id), bucket.count);
+      }
+    });
+    return {
+      counts,
+      totalCount: Number.isInteger(search?.total_count) ? search.total_count : null,
+    };
+  } catch (error) {
+    console.error(error);
+    return { counts: new Map(), totalCount: null };
+  }
 }
 
 async function loadCategories() {
   const rootId = String(commerce.plugins?.picker?.rootCategory || '2');
   try {
-    const data = await graphql(CATEGORIES_QUERY, { id: rootId });
+    const [data, countResult] = await Promise.all([
+      graphql(CATEGORIES_QUERY, { id: rootId }),
+      loadCategoryCounts(),
+    ]);
     const categories = (data?.categories || [])
       .filter((category) => category?.id && category?.name);
-    renderCategoryTree(categories, rootId);
+    const root = buildCategoryTree(
+      categories,
+      rootId,
+      countResult.counts,
+      countResult.totalCount,
+    );
+    renderCategoryTree(root, countResult.totalCount);
   } catch (error) {
     console.error(error);
-    categoryEl.innerHTML = `<ul class="category-roots"><li>
-      <button type="button" data-category="" data-path="All products" aria-pressed="true">
-        <span class="category-name">All products</span>
-      </button>
-    </li></ul>`;
+    renderCategoryTree(null, null);
     setStatus('Categories could not be loaded. All products is still available.');
   }
 }
@@ -276,7 +348,22 @@ document.querySelector('.picker-search').addEventListener('submit', (event) => {
   event.preventDefault();
 });
 
+document.getElementById('category-collapse').addEventListener('click', () => setTreeOpen(false));
+document.getElementById('category-expand').addEventListener('click', () => setTreeOpen(true));
+
 categoryEl.addEventListener('click', (event) => {
+  const toggle = event.target.closest('button.category-toggle');
+  if (toggle) {
+    const node = toggle.closest('.has-children');
+    if (!node) return;
+    const open = !node.classList.contains('is-open');
+    node.classList.toggle('is-open', open);
+    toggle.setAttribute('aria-expanded', String(open));
+    const name = node.querySelector(':scope > .category-row .category-name')?.textContent || 'category';
+    toggle.setAttribute('aria-label', `${open ? 'Collapse' : 'Expand'} ${name}`);
+    return;
+  }
+
   const button = event.target.closest('button[data-category]');
   if (!button) return;
   categoryId = button.dataset.category;

@@ -10,6 +10,11 @@
     <main class="picker">
       <form class="picker-search" role="search">
         <p id="category-filter-label" class="category-filter-title">Product by category</p>
+        <div class="category-tools">
+          <button type="button" id="category-collapse">Collapse all</button>
+          <span class="category-tools-sep" aria-hidden="true">|</span>
+          <button type="button" id="category-expand">Expand all</button>
+        </div>
         <div id="category-filter" class="category-tree" aria-labelledby="category-filter-label"></div>
         <p id="category-path" class="category-path">All products</p>
         <label for="product-search">Search</label>
