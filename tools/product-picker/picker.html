@@ -18,10 +18,26 @@
           </div>
           <div id="category-filter" class="category-tree" aria-labelledby="category-filter-label"></div>
         </section>
-        <form class="picker-search" role="search">
-          <label for="product-search">Search by SKU</label>
-          <input id="product-search" type="search" placeholder="SKU or name" autocomplete="off">
-        </form>
+        <div class="picker-search-column">
+          <form class="picker-search" role="search">
+            <label for="product-search">Search by SKU</label>
+            <input id="product-search" type="search" placeholder="SKU or name" autocomplete="off">
+          </form>
+          <div id="slider-options" class="slider-options" hidden>
+            <fieldset class="slider-layout">
+              <legend>View</legend>
+              <label><input type="radio" name="slider-layout" value="slider" checked> Slider</label>
+              <label><input type="radio" name="slider-layout" value="grid"> Grid</label>
+            </fieldset>
+            <div class="slider-breakpoints">
+              <p id="slider-breakpoint-label">Cards visible</p>
+              <label>Mobile <input id="slider-mobile" type="number" min="1" max="6" value="1"></label>
+              <label>Tablet <input id="slider-tablet" type="number" min="1" max="6" value="2"></label>
+              <label>Desktop <input id="slider-desktop" type="number" min="1" max="6" value="4"></label>
+            </div>
+            <button type="button" id="slider-add" disabled>Add products</button>
+          </div>
+        </div>
       </div>
       <ul id="product-list" class="product-list"></ul>
     </main>

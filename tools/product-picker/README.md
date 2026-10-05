@@ -11,6 +11,16 @@
 
 Each selection is its own block, so two selections on one document show two products.
 
+## Product slider
+
+Add a second library row when authors should build a product slider from the same category tree and SKU search. `config.json` `plugins.picker.productSlider` supplies the starting layout and the mobile, tablet, and desktop counts.
+
+| title | path | format | experience |
+| --- | --- | --- | --- |
+| Product slider | `https://main--b2bstorefront--bv-prakash.aem.page/tools/product-picker/picker.html?block=product-slider` | `fullsize-dialog` | `fullsize-dialog` |
+
+Select one or more products, choose **Slider** or **Grid**, then add them. Each product is stored as its SKU and name. Slider arrows are created on the page only when that breakpoint shows fewer cards than the number of products.
+
 ## How to use it
 
 Add a row on the site library sheet in Document Authoring. The sheet columns are `title`, `path`, `format`, and `experience`.

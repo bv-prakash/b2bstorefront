@@ -28,7 +28,9 @@ body {
 }
 
 .picker-categories,
-.picker-search {
+.picker-search,
+.picker-search-column,
+.slider-options {
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -215,7 +217,13 @@ body {
   background: #fff;
 }
 
-.product-list button {
+.picker .product-list button,
+.picker .slider-options button {
+  font: inherit;
+  cursor: pointer;
+}
+
+.picker .product-list button {
   display: grid;
   grid-template-columns: 48px minmax(0, 1fr);
   gap: 12px;
@@ -226,18 +234,83 @@ body {
   border-bottom: 1px solid #eee;
   border-radius: 0;
   background: #fff;
-  font: inherit;
   text-align: left;
-  cursor: pointer;
 }
 
-.product-list li:last-child button {
+.picker .slider-options button {
+  align-self: flex-start;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 4px;
+  background: #1473e6;
+  color: #fff;
+}
+
+.picker .product-list button:hover,
+.picker .product-list button:focus-visible {
+  background: #f3f8fd;
+}
+
+.picker .product-list button[aria-pressed="true"] {
+  background: #d6e9fb;
+}
+
+.picker .slider-options button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.picker .product-list li:last-child button {
   border-bottom: 0;
 }
 
-.product-list button:hover,
-.product-list button:focus-visible {
-  background: #f3f8fd;
+.slider-options[hidden] {
+  display: none;
+}
+
+.slider-layout {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.slider-layout legend,
+.slider-breakpoints p {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.slider-breakpoints {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.slider-breakpoints p {
+  grid-column: 1 / -1;
+}
+
+.slider-breakpoints label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.slider-breakpoints input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 8px;
+  border: 1px solid #b5b5b5;
+  border-radius: 4px;
+  font: inherit;
 }
 
 .product-thumb {

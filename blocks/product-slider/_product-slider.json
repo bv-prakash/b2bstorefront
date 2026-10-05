@@ -1,0 +1,55 @@
+{
+  "definitions": [{
+    "title": "Product Slider",
+    "id": "product-slider",
+    "model": "product-slider",
+    "plugins": {
+      "da": {
+        "type": "key-value-block"
+      }
+    }
+  }],
+  "models": [{
+    "id": "product-slider",
+    "fields": [
+      {
+        "component": "select",
+        "name": "layout",
+        "label": "Layout",
+        "value": "slider",
+        "options": [
+          {
+            "name": "Slider",
+            "value": "slider"
+          },
+          {
+            "name": "Grid",
+            "value": "grid"
+          }
+        ]
+      },
+      {
+        "component": "number",
+        "name": "mobile",
+        "label": "Mobile",
+        "value": 1,
+        "description": "Cards visible on mobile. Slider arrows appear when there are more products than this."
+      },
+      {
+        "component": "number",
+        "name": "tablet",
+        "label": "Tablet",
+        "value": 2,
+        "description": "Cards visible from 600px."
+      },
+      {
+        "component": "number",
+        "name": "desktop",
+        "label": "Desktop",
+        "value": 4,
+        "description": "Cards visible from 1200px."
+      }
+    ]
+  }],
+  "filters": []
+}

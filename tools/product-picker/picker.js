@@ -56,12 +56,16 @@ const CATEGORY_PRODUCTS_QUERY = `query ProductPickerByCategory(
 const listEl = document.getElementById('product-list');
 const searchEl = document.getElementById('product-search');
 const categoryEl = document.getElementById('category-filter');
+const sliderOptionsEl = document.getElementById('slider-options');
+const sliderAddEl = document.getElementById('slider-add');
+const sliderMode = new URLSearchParams(window.location.search).get('block') === 'product-slider';
 
 let commerce = null;
 let phrase = '';
 let categoryId = '';
 let daActions = null;
 let requestId = 0;
+const selectedProducts = new Map();
 
 function escapeHtml(value) {
   return String(value)
@@ -289,8 +293,9 @@ function renderProducts(products) {
     const thumb = imageUrl
       ? `<img src="${escapeHtml(imageUrl)}" alt="">`
       : '';
+    const pressed = sliderMode && selectedProducts.has(product.sku);
     return `<li>
-      <button type="button" data-sku="${escapeHtml(product.sku)}">
+      <button type="button" data-sku="${escapeHtml(product.sku)}" data-name="${escapeHtml(product.name || product.sku)}" aria-pressed="${pressed ? 'true' : 'false'}">
         <span class="product-thumb">${thumb}</span>
         <span class="product-copy">
           <span class="product-name">${escapeHtml(product.name || product.sku)}</span>
@@ -299,6 +304,68 @@ function renderProducts(products) {
       </button>
     </li>`;
   }).join('');
+}
+
+function productSliderBlockHtml(products, options) {
+  const rows = [
+    ['layout', options.layout],
+    ['mobile', options.mobile],
+    ['tablet', options.tablet],
+    ['desktop', options.desktop],
+    ...products.map((product) => [product.sku, product.name]),
+  ];
+  const body = rows.map(([key, value]) => `<tr><td><p>${escapeHtml(key)}</p></td><td><p>${escapeHtml(value)}</p></td></tr>`).join('');
+  return `<table><tbody><tr><td colspan="2">product-slider</td></tr>${body}</tbody></table>`;
+}
+
+function sliderOptions() {
+  const layout = document.querySelector('input[name="slider-layout"]:checked')?.value === 'grid' ? 'grid' : 'slider';
+  return {
+    layout,
+    mobile: document.getElementById('slider-mobile').value,
+    tablet: document.getElementById('slider-tablet').value,
+    desktop: document.getElementById('slider-desktop').value,
+  };
+}
+
+function updateBreakpointLabel() {
+  const label = document.getElementById('slider-breakpoint-label');
+  const layout = document.querySelector('input[name="slider-layout"]:checked')?.value;
+  label.textContent = layout === 'grid' ? 'Columns' : 'Cards visible';
+}
+
+function applySliderDefaults() {
+  const defaults = commerce.plugins?.picker?.productSlider || {};
+  const layout = defaults.layout === 'grid' ? 'grid' : 'slider';
+  const selected = document.querySelector(`input[name="slider-layout"][value="${layout}"]`);
+  if (selected) selected.checked = true;
+  document.getElementById('slider-mobile').value = defaults.mobile || 1;
+  document.getElementById('slider-tablet').value = defaults.tablet || 2;
+  document.getElementById('slider-desktop').value = defaults.desktop || 4;
+  updateBreakpointLabel();
+}
+
+function toggleSelectedProduct(button) {
+  const { sku, name } = button.dataset;
+  if (selectedProducts.has(sku)) selectedProducts.delete(sku);
+  else selectedProducts.set(sku, { sku, name: name || sku });
+  const pressed = selectedProducts.has(sku);
+  listEl.querySelectorAll(`button[data-sku="${CSS.escape(sku)}"]`).forEach((item) => {
+    item.setAttribute('aria-pressed', String(pressed));
+  });
+  sliderAddEl.disabled = selectedProducts.size === 0;
+  sliderAddEl.textContent = selectedProducts.size
+    ? `Add ${selectedProducts.size} products`
+    : 'Add products';
+}
+
+function insertProductSlider() {
+  if (!selectedProducts.size) return;
+  const html = productSliderBlockHtml([...selectedProducts.values()], sliderOptions());
+  if (daActions) {
+    daActions.sendHTML(html);
+    daActions.closeLibrary();
+  }
 }
 
 function productBlockHtml(sku) {
@@ -337,6 +404,10 @@ async function loadProducts() {
 listEl.addEventListener('click', (event) => {
   const button = event.target.closest('button[data-sku]');
   if (!button) return;
+  if (sliderMode) {
+    toggleSelectedProduct(button);
+    return;
+  }
   insertSku(button.dataset.sku);
 });
 
@@ -379,11 +450,21 @@ searchEl.addEventListener('input', () => {
   }, 300);
 });
 
+if (sliderMode) {
+  document.title = 'Product slider';
+  sliderOptionsEl.hidden = false;
+  document.querySelectorAll('input[name="slider-layout"]').forEach((input) => {
+    input.addEventListener('change', updateBreakpointLabel);
+  });
+  sliderAddEl.addEventListener('click', insertProductSlider);
+}
+
 connectAuthoring();
 
 loadCommerceConfig()
   .then(async (store) => {
     commerce = store;
+    if (sliderMode) applySliderDefaults();
     await loadCategories();
     await loadProducts();
   })
