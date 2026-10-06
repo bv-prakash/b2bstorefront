@@ -92,6 +92,23 @@ export function connectAuthoring() {
     });
 }
 
+if (isUniversalEditorPicker()) document.documentElement.classList.add('picker-ue');
+
+function syncFieldHeight(connection) {
+  const field = connection?.host?.field;
+  const picker = document.querySelector('.picker');
+  if (!field?.setHeight || !picker) return;
+  let lastHeight = 0;
+  const report = () => {
+    const height = Math.ceil(picker.getBoundingClientRect().height);
+    if (Math.abs(height - lastHeight) < 2) return;
+    lastHeight = height;
+    field.setHeight(height);
+  };
+  new ResizeObserver(report).observe(picker);
+  report();
+}
+
 export function connectUniversalEditor() {
   if (!isUniversalEditorPicker()) return Promise.resolve(null);
   // eslint-disable-next-line import/no-unresolved, import/extensions
@@ -99,7 +116,7 @@ export function connectUniversalEditor() {
     .then(async (guest) => {
       const attach = guest.attach || guest.default?.attach;
       const connection = await attach({ id: UE_EXTENSION_ID });
-      if (connection?.host?.field?.setHeight) await connection.host.field.setHeight(720);
+      syncFieldHeight(connection);
       return connection;
     })
     .catch((error) => {

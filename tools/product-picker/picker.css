@@ -308,3 +308,28 @@ body {
   padding: 8px 12px;
   cursor: pointer;
 }
+
+.picker-ue body {
+  overflow: hidden;
+}
+
+.picker-ue .picker {
+  height: auto;
+  min-height: 0;
+  padding: 8px 0;
+}
+
+.picker-ue .picker-controls {
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.picker-ue .category-tree {
+  max-height: 180px;
+}
+
+.picker-ue .product-list {
+  flex: none;
+  height: 280px;
+  max-height: none;
+}
