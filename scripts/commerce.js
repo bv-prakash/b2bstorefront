@@ -176,15 +176,17 @@ function notifyUI(event) {
  * @returns {string} The detected page type
  */
 export function detectPageType() {
-  if (document.body.querySelector('main .product-details')) {
+  const firstSection = document.body.querySelector('main > .section');
+  const scope = firstSection || document.body;
+  if (scope.querySelector('.product-details')) {
     return 'Product';
-  } if (document.body.querySelector('main .product-list-page')) {
+  } if (scope.querySelector('.product-list-page')) {
     return 'Category';
-  } if (document.body.querySelector('main .commerce-cart')) {
+  } if (scope.querySelector('.commerce-cart')) {
     return 'Cart';
-  } if (document.body.querySelector('main .commerce-checkout')) {
+  } if (scope.querySelector('.commerce-checkout')) {
     return 'Checkout';
-  } if (document.body.querySelector('main .commerce-b2b-quote-checkout')) {
+  } if (scope.querySelector('.commerce-b2b-quote-checkout')) {
     return 'B2B Checkout';
   }
   return 'CMS';
@@ -333,13 +335,7 @@ export function decorateLinks(main) {
  * Loads commerce-specific lazy content
  */
 export async function loadCommerceLazy() {
-  // Initialize modal functionality
   autolinkModals(document);
-
-  // Initialize Adobe Client Data Layer
-  await import('./acdl/adobe-client-data-layer.min.js');
-
-  // Track history
   trackHistory();
 }
 

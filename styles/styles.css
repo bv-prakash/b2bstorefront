@@ -143,6 +143,7 @@ html, body {
 
 html {
   font-size: 62.5%;
+  overflow-x: hidden;
 }
 
 body {
@@ -157,13 +158,12 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-body:not(.appear) {
-  display: none;
-}
-
 header {
+  box-sizing: border-box;
   grid-row: 1;
   height: var(--nav-height);
+  background-color: var(--background-color);
+  border-bottom: 1px solid var(--color-neutral-300);
 }
 
 main {
@@ -172,6 +172,11 @@ main {
 
 footer {
   grid-row: 3;
+}
+
+body:not(.appear) main,
+body:not(.appear) footer {
+  display: none;
 }
 
 header .header,

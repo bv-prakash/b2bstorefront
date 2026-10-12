@@ -3,6 +3,7 @@
   --product-slider-visible: var(--product-slider-mobile, 1);
 
   margin: var(--spacing-medium) 0;
+  overflow-x: hidden;
 }
 
 .product-slider-controls {
@@ -80,6 +81,11 @@
   justify-content: center;
   aspect-ratio: 1;
   background: #fafafa;
+}
+
+.product-slider-card--pending .product-slider-card-media {
+  background: linear-gradient(90deg, #f3f3f3 25%, #ececec 37%, #f3f3f3 63%);
+  background-size: 400% 100%;
 }
 
 .product-slider-card-media img,

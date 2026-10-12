@@ -4,6 +4,11 @@
   move-to-http-header="true"
 />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<style>
+  html, body { margin: 0; background: #fff; }
+  header { display: block; box-sizing: border-box; height: 6.4rem; background: #fff; border-bottom: 1px solid #e8e8e8; }
+  body:not(.appear) main, body:not(.appear) footer { display: none; }
+</style>
 <script nonce="aem">
   (function addProductPickerExtension() {
     if (!/\.ue\.da\.live$/.test(window.location.hostname)) return;
@@ -74,10 +79,5 @@
 
 <script nonce="aem" src="/scripts/aem.js" type="module"></script>
 <script nonce="aem" src="/scripts/scripts.js" type="module"></script>
-<script nonce="aem" src="/scripts/commerce.js" type="module"></script>
 
 <link rel="modulepreload" href="/scripts/__dropins__/tools/lib/aem/configs.js" />
-<link rel="modulepreload" href="/scripts/initializers/index.js" />
-<link rel="modulepreload" href="/scripts/__dropins__/tools/event-bus.js" />
-<link rel="modulepreload" href="/scripts/__dropins__/tools/fetch-graphql.js" />
-<link rel="modulepreload" href="/scripts/__dropins__/tools/initializer.js" />

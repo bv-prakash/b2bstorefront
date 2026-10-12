@@ -1,12 +1,4 @@
-import {
-  Button, Icon, PriceRange, provider as UI,
-} from '@dropins/tools/components.js';
-import * as cartApi from '@dropins/storefront-cart/api.js';
-import { WishlistToggle } from '@dropins/storefront-wishlist/containers/WishlistToggle.js';
-import { render as wishlistRender } from '@dropins/storefront-wishlist/render.js';
 import { CS_FETCH_GRAPHQL, fetchPlaceholders, getProductLink } from '../../scripts/commerce.js';
-import '../../scripts/initializers/cart.js';
-import '../../scripts/initializers/wishlist.js';
 import { PRODUCT_SLIDER_DEFAULTS } from './defaults.js';
 
 const PRODUCTS_QUERY = `query ProductSlider($skus: [String!], $pageSize: Int!) {
@@ -132,61 +124,69 @@ function productImage(product) {
   return preferred?.url || '';
 }
 
+function cardImageWidth() {
+  return 400;
+}
+
+function optimizedImageUrl(url, width) {
+  if (!url) return '';
+  try {
+    const parsed = new URL(url, window.location.href);
+    parsed.searchParams.set('width', String(width));
+    parsed.searchParams.set('format', 'webp');
+    parsed.searchParams.set('quality', '80');
+    return parsed.toString();
+  } catch {
+    return url;
+  }
+}
+
+function preloadLcpImage(href) {
+  if (!href) return;
+  const exists = [...document.querySelectorAll('link[rel="preload"][as="image"]')]
+    .some((link) => link.href === href);
+  if (exists) return;
+  const link = document.createElement('link');
+  link.rel = 'preload';
+  link.as = 'image';
+  link.href = href;
+  link.setAttribute('fetchpriority', 'high');
+  document.head.appendChild(link);
+}
+
+function whenIdle(fn) {
+  if (typeof window.requestIdleCallback === 'function') {
+    window.requestIdleCallback(() => fn(), { timeout: 2500 });
+    return;
+  }
+  window.setTimeout(fn, 1);
+}
+
 function priceCurrency(amount) {
   const currency = amount?.currency || 'USD';
   return Intl.supportedValuesOf('currency').includes(currency) ? currency : 'USD';
 }
 
-function salePriceMarkup() {
-  return '<div class="product-price"><span class="regular-price-normal"></span><span class="special-price-crossed"></span></div>';
-}
-
-async function renderPrice(product, el) {
-  if (product.typename === 'ComplexProductView' || product.__typename === 'ComplexProductView') {
-    const range = product.priceRange;
-    const minimumFinal = range?.minimum?.final?.amount?.value;
-    const minimumRegular = range?.minimum?.regular?.amount?.value;
-    const maximumFinal = range?.maximum?.final?.amount?.value;
-    const maximumRegular = range?.maximum?.regular?.amount?.value;
-    if (minimumRegular === undefined || maximumRegular === undefined) return;
-    const currency = priceCurrency(range.minimum?.regular?.amount);
-    const onSale = minimumFinal < minimumRegular || maximumFinal < maximumRegular;
-    if (onSale) {
-      el.innerHTML = salePriceMarkup();
-      await UI.render(PriceRange, {
-        display: 'from to',
-        minimumAmount: minimumFinal,
-        maximumAmount: maximumFinal,
-        currency,
-      })(el.querySelector('.regular-price-normal'));
-      await UI.render(PriceRange, {
-        display: 'from to',
-        minimumAmount: minimumRegular,
-        maximumAmount: maximumRegular,
-        currency,
-      })(el.querySelector('.special-price-crossed'));
-      return;
-    }
-    await UI.render(PriceRange, {
-      display: 'from to',
-      minimumAmount: minimumRegular,
-      maximumAmount: maximumRegular,
-      currency,
-    })(el);
-    return;
+function formatPriceText(product) {
+  const isComplex = product.__typename === 'ComplexProductView';
+  if (isComplex) {
+    const min = product.priceRange?.minimum?.final?.amount?.value
+      ?? product.priceRange?.minimum?.regular?.amount?.value;
+    const max = product.priceRange?.maximum?.final?.amount?.value
+      ?? product.priceRange?.maximum?.regular?.amount?.value;
+    const currency = priceCurrency(
+      product.priceRange?.minimum?.final?.amount
+      || product.priceRange?.minimum?.regular?.amount,
+    );
+    if (min === undefined) return '';
+    const nf = new Intl.NumberFormat('en-US', { style: 'currency', currency });
+    if (max !== undefined && max !== min) return `${nf.format(min)} – ${nf.format(max)}`;
+    return nf.format(min);
   }
-
-  const finalAmount = product.price?.final?.amount?.value;
-  const regularAmount = product.price?.regular?.amount?.value;
-  if (regularAmount === undefined) return;
-  const currency = priceCurrency(product.price?.regular?.amount);
-  if (finalAmount !== undefined && finalAmount < regularAmount) {
-    el.innerHTML = salePriceMarkup();
-    await UI.render(PriceRange, { amount: finalAmount, currency })(el.querySelector('.regular-price-normal'));
-    await UI.render(PriceRange, { amount: regularAmount, currency })(el.querySelector('.special-price-crossed'));
-    return;
-  }
-  await UI.render(PriceRange, { amount: regularAmount, currency })(el);
+  const amount = product.price?.final?.amount?.value ?? product.price?.regular?.amount?.value;
+  const currency = priceCurrency(product.price?.final?.amount || product.price?.regular?.amount);
+  if (amount === undefined) return '';
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount);
 }
 
 function visibleCount(config) {
@@ -195,18 +195,41 @@ function visibleCount(config) {
   return config.mobile;
 }
 
-function cardHtml(product) {
+function skeletonCard(product) {
+  const name = product.name || product.sku;
+  return `<article class="product-slider-card product-slider-card--pending" data-sku="${escapeHtml(product.sku)}">
+    <div class="product-slider-card-media" aria-hidden="true"></div>
+    <div class="product-slider-card-body">
+      <p class="product-slider-card-name">${escapeHtml(name)}</p>
+    </div>
+  </article>`;
+}
+
+function renderSliderShell(block, cardsHtml) {
+  block.innerHTML = `<div class="product-slider-controls">
+      <button type="button" class="product-slider-prev" aria-label="Previous products">Previous</button>
+      <button type="button" class="product-slider-next" aria-label="Next products">Next</button>
+    </div>
+    <div class="product-slider-track">${cardsHtml}</div>
+    <div class="product-slider-compare" hidden></div>`;
+}
+
+function cardHtml(product, { eager = false, width = 400 } = {}) {
   const href = getProductLink(product.urlKey, product.sku);
   const name = product.name || product.sku;
   const image = productImage(product);
-  const media = image
-    ? `<img src="${escapeHtml(image)}" alt="${escapeHtml(name)}">`
+  const src = optimizedImageUrl(image, width);
+  const srcSmall = optimizedImageUrl(image, 360);
+  const loading = eager ? ' loading="eager" fetchpriority="high"' : ' loading="lazy"';
+  const media = src
+    ? `<img src="${escapeHtml(src)}" srcset="${escapeHtml(srcSmall)} 360w, ${escapeHtml(src)} 400w" sizes="(min-width: 1200px) 280px, (min-width: 600px) 45vw, 92vw" width="400" height="300" alt="${escapeHtml(name)}"${loading}>`
     : '';
+  const price = formatPriceText(product);
   return `<article class="product-slider-card" data-sku="${escapeHtml(product.sku)}">
     <a class="product-slider-card-media" href="${escapeHtml(href)}">${media}</a>
     <div class="product-slider-card-body">
       <a class="product-slider-card-name" href="${escapeHtml(href)}">${escapeHtml(name)}</a>
-      <div class="product-slider-card-price"></div>
+      <p class="product-slider-card-price">${escapeHtml(price)}</p>
       <div class="product-slider-card-actions">
         <div class="product-slider-card-cart"></div>
         <div class="product-slider-card-wishlist"></div>
@@ -225,8 +248,8 @@ function renderCompare(panel, compared, block) {
   panel.hidden = false;
   panel.innerHTML = `<p class="product-slider-compare-title">Compare</p>
     <ul>${[...compared.values()].map((product) => {
-    const image = productImage(product);
-    const thumb = image ? `<img src="${escapeHtml(image)}" alt="">` : '';
+    const image = optimizedImageUrl(productImage(product), 120);
+    const thumb = image ? `<img src="${escapeHtml(image)}" width="120" height="120" alt="" loading="lazy">` : '';
     const price = block.querySelector(`.product-slider-card[data-sku="${CSS.escape(product.sku)}"] .product-slider-card-price`)?.innerHTML || '';
     return `<li>
       ${thumb}
@@ -236,64 +259,27 @@ function renderCompare(panel, compared, block) {
   }).join('')}</ul>`;
 }
 
-/**
- * loads and decorates the block
- * @param {Element} block The block element
- */
-export default async function decorate(block) {
-  const config = readSliderConfig(block);
-  const labels = await fetchPlaceholders();
-  const compared = new Map();
+function isFirstSectionBlock(block) {
+  const section = block.closest('.section');
+  return Boolean(section && section === section.parentElement?.querySelector(':scope > .section'));
+}
 
-  if (!config.products.length) {
-    block.textContent = '';
-    return;
-  }
-
-  block.style.setProperty('--product-slider-mobile', config.mobile);
-  block.style.setProperty('--product-slider-tablet', config.tablet);
-  block.style.setProperty('--product-slider-desktop', config.desktop);
-  block.classList.toggle('product-slider--grid', config.layout === 'grid');
-  block.classList.toggle('product-slider--slider', config.layout === 'slider');
-
-  let products = [];
-  try {
-    const payload = await CS_FETCH_GRAPHQL.fetchGraphQl(PRODUCTS_QUERY, {
-      variables: {
-        skus: config.products.map((product) => product.sku),
-        pageSize: config.products.length,
-      },
-    });
-    const bySku = new Map((payload?.data?.productSearch?.items || [])
-      .map((item) => item.productView)
-      .filter((product) => product?.sku)
-      .map((product) => [product.sku, product]));
-    products = config.products
-      .map((authored) => {
-        const product = bySku.get(authored.sku);
-        if (!product) return null;
-        if (!product.name) product.name = authored.name;
-        return product;
-      })
-      .filter(Boolean);
-  } catch (error) {
-    console.error(error);
-  }
-
-  const needsSlider = config.layout === 'slider' && products.length > visibleCount(config);
-  block.classList.toggle('product-slider--scroll', needsSlider);
-  block.innerHTML = `<div class="product-slider-controls">
-      <button type="button" class="product-slider-prev" aria-label="Previous products">Previous</button>
-      <button type="button" class="product-slider-next" aria-label="Next products">Next</button>
-    </div>
-    <div class="product-slider-track">${products.map((product) => cardHtml(product)).join('')}</div>
-    <div class="product-slider-compare" hidden></div>`;
-
-  if (!products.length) {
-    block.classList.remove('product-slider--scroll');
-    block.querySelector('.product-slider-track').innerHTML = '<p class="product-slider-empty">No products.</p>';
-    return;
-  }
+async function hydrateSliderCards(block, products, compared) {
+  const [
+    { Button, Icon, provider: UI },
+    cartApi,
+    { WishlistToggle },
+    { render: wishlistRender },
+    labels,
+  ] = await Promise.all([
+    import('@dropins/tools/components.js'),
+    import('@dropins/storefront-cart/api.js'),
+    import('@dropins/storefront-wishlist/containers/WishlistToggle.js'),
+    import('@dropins/storefront-wishlist/render.js'),
+    fetchPlaceholders(),
+    import('../../scripts/initializers/cart.js'),
+    import('../../scripts/initializers/wishlist.js'),
+  ]);
 
   const track = block.querySelector('.product-slider-track');
   const comparePanel = block.querySelector('.product-slider-compare');
@@ -301,10 +287,10 @@ export default async function decorate(block) {
 
   await Promise.all(products.map(async (product, index) => {
     const card = cards[index];
+    if (!card) return;
     const name = product.name || product.sku;
     const cartSlot = card.querySelector('.product-slider-card-cart');
     const addToCartLabel = `${labels.Global?.AddProductToCart || 'Add to cart'} ${name}`;
-    await renderPrice(product, card.querySelector('.product-slider-card-price'));
     const needsOptions = product.__typename === 'ComplexProductView';
     await UI.render(Button, {
       'aria-label': addToCartLabel,
@@ -333,6 +319,76 @@ export default async function decorate(block) {
       renderCompare(comparePanel, compared, block);
     });
   }));
+}
+
+/**
+ * loads and decorates the block
+ * @param {Element} block The block element
+ */
+export default async function decorate(block) {
+  const config = readSliderConfig(block);
+  const compared = new Map();
+
+  if (!config.products.length) {
+    block.textContent = '';
+    return;
+  }
+
+  block.style.setProperty('--product-slider-mobile', config.mobile);
+  block.style.setProperty('--product-slider-tablet', config.tablet);
+  block.style.setProperty('--product-slider-desktop', config.desktop);
+  block.classList.toggle('product-slider--grid', config.layout === 'grid');
+  block.classList.toggle('product-slider--slider', config.layout === 'slider');
+  renderSliderShell(block, config.products.map((product) => skeletonCard(product)).join(''));
+  const section = block.closest('.section');
+  if (section) section.style.display = null;
+
+  let products = [];
+  try {
+    const payload = await CS_FETCH_GRAPHQL.fetchGraphQl(PRODUCTS_QUERY, {
+      variables: {
+        skus: config.products.map((product) => product.sku),
+        pageSize: config.products.length,
+      },
+    });
+    const bySku = new Map((payload?.data?.productSearch?.items || [])
+      .map((item) => item.productView)
+      .filter((product) => product?.sku)
+      .map((product) => [product.sku, product]));
+    products = config.products
+      .map((authored) => {
+        const product = bySku.get(authored.sku);
+        if (!product) return null;
+        if (!product.name) product.name = authored.name;
+        return product;
+      })
+      .filter(Boolean);
+  } catch (error) {
+    console.error(error);
+  }
+
+  const needsSlider = config.layout === 'slider' && products.length > visibleCount(config);
+  const eagerFirstImage = isFirstSectionBlock(block);
+  const imageWidth = cardImageWidth();
+  if (eagerFirstImage && products[0]) {
+    preloadLcpImage(optimizedImageUrl(productImage(products[0]), imageWidth));
+  }
+  block.classList.toggle('product-slider--scroll', needsSlider);
+  renderSliderShell(
+    block,
+    products.map((product, index) => cardHtml(product, {
+      eager: eagerFirstImage && index === 0,
+      width: imageWidth,
+    })).join(''),
+  );
+
+  if (!products.length) {
+    block.classList.remove('product-slider--scroll');
+    block.querySelector('.product-slider-track').innerHTML = '<p class="product-slider-empty">No products.</p>';
+    return;
+  }
+
+  const track = block.querySelector('.product-slider-track');
 
   const updateSlider = () => {
     const scrolling = config.layout === 'slider' && products.length > visibleCount(config);
@@ -366,4 +422,7 @@ export default async function decorate(block) {
   });
   updateSlider();
   window.requestAnimationFrame(updateSlider);
+  whenIdle(() => {
+    hydrateSliderCards(block, products, compared).catch((error) => console.error(error));
+  });
 }

@@ -3,6 +3,7 @@ import { getUserTokenCookie } from './initializers/index.js';
 import { getConsent } from './commerce.js';
 
 async function initAnalytics() {
+  await import('./acdl/adobe-client-data-layer.min.js');
   try {
     // Load Commerce events SDK and collector
     // only if "analytics" has been added to the config.

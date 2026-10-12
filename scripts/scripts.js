@@ -6,9 +6,9 @@ import {
   decorateTemplateAndTheme,
   waitForFirstImage,
   loadSection,
-  loadSections,
   loadCSS,
   buildBlock,
+  sampleRUM,
 } from './aem.js';
 import {
   loadCommerceEager,
@@ -210,6 +210,36 @@ function firstSectionNeedsDropins(main) {
   ].join(',')));
 }
 
+function yieldToMain() {
+  if (typeof window.scheduler?.yield === 'function') {
+    return window.scheduler.yield();
+  }
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, 0);
+  });
+}
+
+/**
+ * Loads remaining sections after LCP so the page is complete without one long task.
+ * @param {Element} main
+ */
+async function loadRemainingSections(main) {
+  if (!main) return;
+  const sections = [...main.querySelectorAll(':scope > .section')]
+    .filter((section) => {
+      const { sectionStatus } = section.dataset;
+      return sectionStatus !== 'loaded' && sectionStatus !== 'loading';
+    });
+  for (let i = 0; i < sections.length; i += 1) {
+    // eslint-disable-next-line no-await-in-loop
+    await loadSection(sections[i]);
+    if (i < sections.length - 1) {
+      // eslint-disable-next-line no-await-in-loop
+      await yieldToMain();
+    }
+  }
+}
+
 /**
  * Loads everything needed to get to LCP.
  * @param {Element} doc The container element
@@ -217,6 +247,9 @@ function firstSectionNeedsDropins(main) {
 async function loadEager(doc) {
   document.documentElement.lang = 'en';
   decorateTemplateAndTheme();
+
+  const header = doc.querySelector('header');
+  const headerReady = header ? loadHeader(header) : Promise.resolve();
 
   const main = doc.querySelector('main');
   if (main) {
@@ -230,35 +263,28 @@ async function loadEager(doc) {
       console.error('Error initializing commerce configuration:', e);
       loadErrorPage(418);
     }
-    // Reveal decorated markup before drop-in mounts and GraphQL (EDS keeping-it-100).
     document.body.classList.add('appear');
 
+    const section = main.querySelector('.section');
+    const firstSection = section ? loadSection(section, waitForFirstImage) : Promise.resolve();
     if (commerceReady) {
-      const dropinsReady = startCommerceDropins();
       try {
-        await loadCommerceEager();
-        if (firstSectionNeedsDropins(main)) await dropinsReady;
+        const commerceEager = loadCommerceEager().then(() => {
+          if (firstSectionNeedsDropins(main)) return startCommerceDropins();
+          return undefined;
+        });
+        await Promise.all([headerReady, firstSection, commerceEager]);
       } catch (e) {
         console.error('Error initializing commerce configuration:', e);
         loadErrorPage(418);
+        await Promise.all([headerReady, firstSection]);
       }
+    } else {
+      await Promise.all([headerReady, firstSection]);
     }
-    const section = main.querySelector('.section');
-    const firstSection = section
-      ? loadSection(section, waitForFirstImage)
-      : Promise.resolve();
-    const header = doc.querySelector('header');
-    if (header) loadHeader(header);
-    await firstSection;
-  }
-
-  try {
-    /* if desktop (proxy for fast connection) or fonts already loaded, load fonts.css */
-    if (window.innerWidth >= 900 || sessionStorage.getItem('fonts-loaded')) {
-      loadFonts();
-    }
-  } catch (e) {
-    // do nothing
+    if (sampleRUM.enhance) sampleRUM.enhance();
+  } else {
+    await headerReady;
   }
 }
 
@@ -268,17 +294,26 @@ async function loadEager(doc) {
  */
 async function loadLazy(doc) {
   const header = doc.querySelector('header');
-  if (header && !header.querySelector('.header')) {
-    loadHeader(header);
+  if (header && !header.querySelector('.header')) await loadHeader(header);
+
+  if (typeof window.requestIdleCallback === 'function') {
+    window.requestIdleCallback(() => startCommerceDropins(), { timeout: 3000 });
+  } else {
+    window.setTimeout(() => startCommerceDropins(), 1);
   }
-  loadFooter(doc.querySelector('footer'));
 
   const main = doc.querySelector('main');
-  await loadSections(main);
+  await loadRemainingSections(main);
+  const footer = doc.querySelector('footer');
+  if (footer) await loadFooter(footer);
 
   const { hash } = window.location;
   const element = hash ? doc.getElementById(hash.substring(1)) : false;
-  if (hash && element) element.scrollIntoView();
+  if (hash && element) {
+    const hashSection = element.closest('.section');
+    if (hashSection) await loadSection(hashSection);
+    element.scrollIntoView();
+  }
 
   loadCommerceLazy();
 

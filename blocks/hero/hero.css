@@ -5,6 +5,7 @@
 
 .hero {
   position: relative;
+  isolation: isolate;
   padding: 40px 24px;
   min-height: 300px;
 }

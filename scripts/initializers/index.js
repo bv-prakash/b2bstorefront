@@ -70,8 +70,7 @@ const setupAemAssetsImageParams = () => {
 
 const shouldLogEvents = () => {
   try {
-    return window.location.hostname === 'localhost'
-      || new URLSearchParams(window.location.search).has('debug');
+    return new URLSearchParams(window.location.search).has('debug');
   } catch (e) {
     return false;
   }
