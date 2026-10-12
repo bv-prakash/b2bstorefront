@@ -46,6 +46,14 @@ const persistCartDataInSession = (data) => {
   }
 };
 
+const SYNC_KEYS = [
+  'DROPIN__COMPANYSWITCHER__COMPANY__CONTEXT',
+  'DROPIN__COMPANYSWITCHER__GROUP__CONTEXT',
+];
+
+let dropinsRuntimeReady = false;
+let dropinsMountPromise;
+
 const setupAemAssetsImageParams = () => {
   if (isAemAssetsEnabled()) {
     // Convert decimal values to integers for AEM Assets compatibility
@@ -60,125 +68,143 @@ const setupAemAssetsImageParams = () => {
   }
 };
 
+const shouldLogEvents = () => {
+  try {
+    return window.location.hostname === 'localhost'
+      || new URLSearchParams(window.location.search).has('debug');
+  } catch (e) {
+    return false;
+  }
+};
+
+/**
+ * Same-origin / cookie setup required before GraphQL. Safe to run before first paint.
+ */
+export function setupDropins() {
+  if (dropinsRuntimeReady) return;
+  dropinsRuntimeReady = true;
+
+  // Set Customer-Group-ID header
+  if (getConfigValue('adobe-commerce-optimizer')) {
+    events.on('auth/adobe-commerce-optimizer', setAdobeCommerceOptimizerHeader, { eager: true });
+  } else {
+    events.on('auth/group-uid', setCustomerGroupHeader, { eager: true });
+  }
+
+  // Clear cart state when switching between websites to avoid stale cart IDs
+  // and authentication state from a different website causing errors.
+  const storedWebsitePath = getCookie(DROPIN_WEBSITE_COOKIE);
+  const currentWebsitePath = getWebsitePath();
+  if (storedWebsitePath && storedWebsitePath !== currentWebsitePath) {
+    clearCookie('DROPIN__CART__CART-ID');
+    sessionStorage.removeItem('DROPINS_CART_ID');
+    sessionStorage.removeItem('DROPIN__CART__CART__DATA');
+    sessionStorage.removeItem('DROPIN__CART__SHIPPING__DATA');
+    localStorage.removeItem('DROPIN__CART__CART__AUTHENTICATED');
+  }
+  document.cookie = `${DROPIN_WEBSITE_COOKIE}=${currentWebsitePath}; path=/`;
+
+  // Set auth headers on authenticated event
+  events.on('authenticated', setAuthHeaders, { eager: true });
+
+  // Cache cart data in session storage
+  events.on('cart/data', persistCartDataInSession, { eager: true });
+
+  // on page load, check if user is authenticated
+  const token = getUserTokenCookie();
+  // set auth headers
+  setAuthHeaders(!!token);
+
+  events.enableLogger(shouldLogEvents());
+
+  // Set up AEM Assets image parameter conversion
+  setupAemAssetsImageParams();
+
+  /**
+   * Persist sessionStorage across tabs via localStorage proxy
+   * This ensures that the company context is available in all tabs
+   * and that the company context is not lost when the tab is closed
+   * or the browser is closed.
+   */
+  SYNC_KEYS.forEach((key) => {
+    const sessionValue = sessionStorage.getItem(key);
+    if (sessionValue) {
+      // Session has value — mirror it to localStorage for other tabs
+      localStorage.setItem(key, sessionValue);
+    } else {
+      // Session is empty (new tab) — restore from localStorage if available
+      const localValue = localStorage.getItem(key);
+      if (localValue) {
+        sessionStorage.setItem(key, localValue);
+      }
+    }
+  });
+
+  // Sync cross-tab changes in localStorage to sessionStorage
+  window.addEventListener('storage', (event) => {
+    if (event.key && SYNC_KEYS.includes(event.key)) {
+      if (event.newValue === null) {
+        sessionStorage.removeItem(event.key);
+      } else {
+        sessionStorage.setItem(event.key, event.newValue);
+      }
+    }
+  });
+
+  /*
+   * Set the company context before initializing the auth drop-in
+   * This ensures proper permissions are retrieved, and the auth/permissions event includes
+   * the correct payload.
+   */
+  const companyContext = sessionStorage.getItem('DROPIN__COMPANYSWITCHER__COMPANY__CONTEXT');
+  if (token && companyContext) {
+    CORE_FETCH_GRAPHQL.setFetchGraphQlHeader('X-Adobe-Company', companyContext);
+  }
+}
+
+async function mountGlobalDropins() {
+  await fetchPlaceholders('placeholders/global.json');
+
+  // Initialize Global Drop-ins
+  await import('./auth.js');
+
+  // Clear company context from localStorage when not authenticated
+  events.on('authenticated', (isAuthenticated) => {
+    if (!isAuthenticated) {
+      SYNC_KEYS.forEach((key) => {
+        localStorage.removeItem(key);
+      });
+    }
+  }, { eager: true });
+
+  // Initialize Company Switcher
+  const authenticated = events.lastPayload('authenticated');
+
+  if (authenticated && getConfigValue('commerce-companies-enabled') === true) {
+    await import('./company-switcher.js');
+  }
+
+  await import('./personalization.js');
+
+  import('./cart.js');
+
+  events.on('aem/lcp', async () => {
+    // Recaptcha
+    await import('@dropins/tools/recaptcha.js').then((recaptcha) => {
+      recaptcha.setEndpoint(CORE_FETCH_GRAPHQL);
+      recaptcha.enableLogger(shouldLogEvents());
+      return recaptcha.setConfig();
+    });
+  }, { eager: true });
+}
+
 export default async function initializeDropins() {
   const init = async () => {
-    // Set Customer-Group-ID header
-    if (getConfigValue('adobe-commerce-optimizer')) {
-      events.on('auth/adobe-commerce-optimizer', setAdobeCommerceOptimizerHeader, { eager: true });
-    } else {
-      events.on('auth/group-uid', setCustomerGroupHeader, { eager: true });
+    setupDropins();
+    if (!dropinsMountPromise) {
+      dropinsMountPromise = mountGlobalDropins();
     }
-
-    // Clear cart state when switching between websites to avoid stale cart IDs
-    // and authentication state from a different website causing errors.
-    const storedWebsitePath = getCookie(DROPIN_WEBSITE_COOKIE);
-    const currentWebsitePath = getWebsitePath();
-    if (storedWebsitePath && storedWebsitePath !== currentWebsitePath) {
-      clearCookie('DROPIN__CART__CART-ID');
-      sessionStorage.removeItem('DROPINS_CART_ID');
-      sessionStorage.removeItem('DROPIN__CART__CART__DATA');
-      sessionStorage.removeItem('DROPIN__CART__SHIPPING__DATA');
-      localStorage.removeItem('DROPIN__CART__CART__AUTHENTICATED');
-    }
-    document.cookie = `${DROPIN_WEBSITE_COOKIE}=${currentWebsitePath}; path=/`;
-
-    // Set auth headers on authenticated event
-    events.on('authenticated', setAuthHeaders, { eager: true });
-
-    // Cache cart data in session storage
-    events.on('cart/data', persistCartDataInSession, { eager: true });
-
-    // on page load, check if user is authenticated
-    const token = getUserTokenCookie();
-    // set auth headers
-    setAuthHeaders(!!token);
-
-    // Event Bus Logger
-    events.enableLogger(true);
-
-    // Set up AEM Assets image parameter conversion
-    setupAemAssetsImageParams();
-
-    // Fetch global placeholders
-    await fetchPlaceholders('placeholders/global.json');
-
-    /**
-     * Persist sessionStorage across tabs via localStorage proxy
-     * This ensures that the company context is available in all tabs
-     * and that the company context is not lost when the tab is closed
-     * or the browser is closed.
-     */
-    const SYNC_KEYS = [
-      'DROPIN__COMPANYSWITCHER__COMPANY__CONTEXT',
-      'DROPIN__COMPANYSWITCHER__GROUP__CONTEXT',
-    ];
-
-    SYNC_KEYS.forEach((key) => {
-      const sessionValue = sessionStorage.getItem(key);
-      if (sessionValue) {
-        // Session has value — mirror it to localStorage for other tabs
-        localStorage.setItem(key, sessionValue);
-      } else {
-        // Session is empty (new tab) — restore from localStorage if available
-        const localValue = localStorage.getItem(key);
-        if (localValue) {
-          sessionStorage.setItem(key, localValue);
-        }
-      }
-    });
-
-    // Sync cross-tab changes in localStorage to sessionStorage
-    window.addEventListener('storage', (event) => {
-      if (event.key && SYNC_KEYS.includes(event.key)) {
-        if (event.newValue === null) {
-          sessionStorage.removeItem(event.key);
-        } else {
-          sessionStorage.setItem(event.key, event.newValue);
-        }
-      }
-    });
-
-    /*
-     * Set the company context before initializing the auth drop-in
-     * This ensures proper permissions are retrieved, and the auth/permissions event includes
-     * the correct payload.
-     */
-    const companyContext = sessionStorage.getItem('DROPIN__COMPANYSWITCHER__COMPANY__CONTEXT');
-    if (token && companyContext) {
-      CORE_FETCH_GRAPHQL.setFetchGraphQlHeader('X-Adobe-Company', companyContext);
-    }
-
-    // Initialize Global Drop-ins
-    await import('./auth.js');
-
-    // Clear company context from localStorage when not authenticated
-    events.on('authenticated', (isAuthenticated) => {
-      if (!isAuthenticated) {
-        SYNC_KEYS.forEach((key) => {
-          localStorage.removeItem(key);
-        });
-      }
-    }, { eager: true });
-
-    // Initialize Company Switcher
-    const authenticated = events.lastPayload('authenticated');
-
-    if (authenticated && getConfigValue('commerce-companies-enabled') === true) {
-      await import('./company-switcher.js');
-    }
-
-    await import('./personalization.js');
-
-    import('./cart.js');
-
-    events.on('aem/lcp', async () => {
-      // Recaptcha
-      await import('@dropins/tools/recaptcha.js').then((recaptcha) => {
-        recaptcha.setEndpoint(CORE_FETCH_GRAPHQL);
-        recaptcha.enableLogger(true);
-        return recaptcha.setConfig();
-      });
-    }, { eager: true });
+    return dropinsMountPromise;
   };
 
   // re-initialize on prerendering changes

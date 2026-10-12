@@ -12,7 +12,7 @@ import {
   getMetadata,
   readBlockConfig,
 } from './aem.js';
-import initializeDropins from './initializers/index.js';
+import initializeDropins, { setupDropins } from './initializers/index.js';
 
 /**
  * Sanitizes the given string by:
@@ -344,7 +344,8 @@ export async function loadCommerceLazy() {
 }
 
 /**
- * Initializes commerce configuration
+ * Initializes commerce configuration needed to decorate the page.
+ * Global drop-in mounts stay off this path so they do not block first paint.
  */
 export async function initializeCommerce() {
   // Initialize Config
@@ -358,6 +359,16 @@ export async function initializeCommerce() {
   CS_FETCH_GRAPHQL.setEndpoint(await commerceEndpointWithQueryParams());
   CS_FETCH_GRAPHQL.setFetchGraphQlHeaders((prev) => ({ ...prev, ...getHeaders('cs') }));
 
+  setupDropins();
+  // Warm same-origin placeholders without waiting for auth/cart drop-ins.
+  fetchPlaceholders('placeholders/global.json');
+}
+
+/**
+ * Starts auth, personalization, and cart drop-ins after the page can paint.
+ * @returns {Promise<void>}
+ */
+export function startCommerceDropins() {
   return initializeDropins();
 }
 

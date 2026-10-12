@@ -14,6 +14,7 @@ import {
   loadCommerceEager,
   loadCommerceLazy,
   initializeCommerce,
+  startCommerceDropins,
   applyTemplates,
   decorateLinks,
   loadErrorPage,
@@ -194,6 +195,22 @@ export function decorateMain(main) {
 }
 
 /**
+ * True when the first section hydrates a commerce drop-in that needs global init.
+ * @param {Element} main The main element
+ * @returns {boolean}
+ */
+function firstSectionNeedsDropins(main) {
+  const section = main.querySelector('.section');
+  if (!section) return false;
+  return Boolean(section.querySelector([
+    '.product-details',
+    '.product-list-page',
+    '[class^="commerce-"]',
+    '[class*=" commerce-"]',
+  ].join(',')));
+}
+
+/**
  * Loads everything needed to get to LCP.
  * @param {Element} doc The container element
  */
@@ -203,17 +220,36 @@ async function loadEager(doc) {
 
   const main = doc.querySelector('main');
   if (main) {
+    let commerceReady = false;
     try {
       await initializeCommerce();
       decorateMain(main);
       applyTemplates(doc);
-      await loadCommerceEager();
+      commerceReady = true;
     } catch (e) {
       console.error('Error initializing commerce configuration:', e);
       loadErrorPage(418);
     }
+    // Reveal decorated markup before drop-in mounts and GraphQL (EDS keeping-it-100).
     document.body.classList.add('appear');
-    await loadSection(main.querySelector('.section'), waitForFirstImage);
+
+    if (commerceReady) {
+      const dropinsReady = startCommerceDropins();
+      try {
+        await loadCommerceEager();
+        if (firstSectionNeedsDropins(main)) await dropinsReady;
+      } catch (e) {
+        console.error('Error initializing commerce configuration:', e);
+        loadErrorPage(418);
+      }
+    }
+    const section = main.querySelector('.section');
+    const firstSection = section
+      ? loadSection(section, waitForFirstImage)
+      : Promise.resolve();
+    const header = doc.querySelector('header');
+    if (header) loadHeader(header);
+    await firstSection;
   }
 
   try {
@@ -231,7 +267,11 @@ async function loadEager(doc) {
  * @param {Element} doc The container element
  */
 async function loadLazy(doc) {
-  loadHeader(doc.querySelector('header'));
+  const header = doc.querySelector('header');
+  if (header && !header.querySelector('.header')) {
+    loadHeader(header);
+  }
+  loadFooter(doc.querySelector('footer'));
 
   const main = doc.querySelector('main');
   await loadSections(main);
@@ -239,8 +279,6 @@ async function loadLazy(doc) {
   const { hash } = window.location;
   const element = hash ? doc.getElementById(hash.substring(1)) : false;
   if (hash && element) element.scrollIntoView();
-
-  loadFooter(doc.querySelector('footer'));
 
   loadCommerceLazy();
 
