@@ -5,7 +5,7 @@
  */
 
 import { getRootPath } from '@dropins/tools/lib/aem/configs.js';
-import { decorateMain } from '../../scripts/scripts.js';
+import { decorateMain, deferBlocks } from '../../scripts/scripts.js';
 import {
   loadSections,
 } from '../../scripts/aem.js';
@@ -34,6 +34,7 @@ export async function loadFragment(path) {
       resetAttributeBase('source', 'srcset');
 
       decorateMain(main);
+      deferBlocks(main);
       await loadSections(main);
       return main;
     }

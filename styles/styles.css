@@ -189,6 +189,41 @@ footer .footer[data-block-status="loaded"] {
   visibility: visible;
 }
 
+/* PDP skeleton is in eager CSS so leftover viewport is not blank before product-details.js */
+.product-details.product-details--pending > :not(.product-details-skeleton) {
+  display: none;
+}
+
+.product-details-skeleton {
+  display: grid;
+  gap: 16px;
+  min-height: 320px;
+  padding: 24px 0;
+}
+
+.product-details-skeleton__title {
+  width: 42%;
+  height: 28px;
+  border-radius: 4px;
+  background: #f3f3f3;
+}
+
+.product-details-skeleton__row {
+  height: 64px;
+  border-radius: 4px;
+  background: #f3f3f3;
+}
+
+.commerce-newsletter.commerce-newsletter--pending > :not(.commerce-newsletter-skeleton) {
+  display: none;
+}
+
+.commerce-newsletter-skeleton {
+  min-height: 12rem;
+  border-radius: 4px;
+  background: #f3f3f3;
+}
+
 h1,
 h2,
 h3,

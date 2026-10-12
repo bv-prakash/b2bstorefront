@@ -144,6 +144,7 @@ export default async function decorate(block) {
   if (selectedSku && !product) {
     const message = document.createElement('p');
     message.textContent = `Product ${selectedSku} is not available.`;
+    block.classList.remove('product-details--pending');
     block.replaceChildren(message);
     return;
   }
@@ -230,6 +231,7 @@ export default async function decorate(block) {
   const $attributes = fragment.querySelector('.product-details__attributes');
   const $gridOrderingContainer = fragment.querySelector('.product-details__grid-ordering');
 
+  block.classList.remove('product-details--pending');
   block.replaceChildren(fragment);
 
   const gallerySlots = {

@@ -6,6 +6,7 @@ import {
   decorateTemplateAndTheme,
   waitForFirstImage,
   loadSection,
+  loadBlock,
   loadCSS,
   buildBlock,
   sampleRUM,
@@ -210,6 +211,91 @@ function firstSectionNeedsDropins(main) {
   ].join(',')));
 }
 
+function preloadFirstBlock(main) {
+  const block = main?.querySelector('.section .block');
+  const name = block?.dataset.blockName;
+  if (!name) return;
+  const href = `${window.hlx.codeBasePath}/blocks/${name}/${name}.js`;
+  if (document.querySelector(`link[rel="modulepreload"][href="${href}"]`)) return;
+  const link = document.createElement('link');
+  link.rel = 'modulepreload';
+  link.href = href;
+  document.head.append(link);
+}
+
+function afterNextPaint() {
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(resolve);
+    });
+  });
+}
+
+function showViewportPdpSkeletons(main) {
+  if (!main) return;
+  const loaded = [...main.querySelectorAll(':scope > .section')]
+    .filter((section) => section.dataset.sectionStatus === 'loaded');
+  const lastLoaded = loaded[loaded.length - 1];
+  if (lastLoaded && lastLoaded.getBoundingClientRect().bottom >= window.innerHeight) return;
+
+  [...main.querySelectorAll(':scope > .section')]
+    .filter((section) => {
+      const { sectionStatus } = section.dataset;
+      return sectionStatus === 'initialized' && section.querySelector('.product-details');
+    })
+    .forEach((section) => {
+      const block = section.querySelector('.product-details');
+      if (!block || block.querySelector('.product-details-skeleton')) return;
+      block.classList.add('product-details--pending');
+      const skeleton = document.createElement('div');
+      skeleton.className = 'product-details-skeleton';
+      skeleton.setAttribute('aria-hidden', 'true');
+      skeleton.innerHTML = '<div class="product-details-skeleton__title"></div>'
+        + '<div class="product-details-skeleton__row"></div>'
+        + '<div class="product-details-skeleton__row"></div>'
+        + '<div class="product-details-skeleton__row"></div>';
+      block.append(skeleton);
+      section.style.display = null;
+    });
+}
+
+const deferredBlocks = [];
+
+/**
+ * Skips below-fold drop-ins (newsletter) so they are not on the LCP request chain.
+ * @param {Element} root
+ */
+export function deferBlocks(root) {
+  if (!root) return;
+  [...root.querySelectorAll('.commerce-newsletter')].forEach((block) => {
+    if (block.dataset.deferredBlock) return;
+    const { blockStatus } = block.dataset;
+    if (blockStatus === 'loading' || blockStatus === 'loaded') return;
+    block.dataset.blockStatus = 'loaded';
+    block.dataset.deferredBlock = 'true';
+    block.classList.add('commerce-newsletter--pending');
+    if (!block.querySelector('.commerce-newsletter-skeleton')) {
+      const skeleton = document.createElement('div');
+      skeleton.className = 'commerce-newsletter-skeleton';
+      skeleton.setAttribute('aria-hidden', 'true');
+      block.append(skeleton);
+    }
+    deferredBlocks.push(block);
+  });
+}
+
+async function hydrateDeferredBlocks() {
+  const blocks = deferredBlocks.splice(0);
+  for (let i = 0; i < blocks.length; i += 1) {
+    const block = blocks[i];
+    delete block.dataset.deferredBlock;
+    block.dataset.blockStatus = '';
+    // eslint-disable-next-line no-await-in-loop
+    await loadBlock(block);
+    block.classList.remove('commerce-newsletter--pending');
+  }
+}
+
 function yieldToMain() {
   if (typeof window.scheduler?.yield === 'function') {
     return window.scheduler.yield();
@@ -225,6 +311,7 @@ function yieldToMain() {
  */
 async function loadRemainingSections(main) {
   if (!main) return;
+  deferBlocks(main);
   const sections = [...main.querySelectorAll(':scope > .section')]
     .filter((section) => {
       const { sectionStatus } = section.dataset;
@@ -258,6 +345,7 @@ async function loadEager(doc) {
       await initializeCommerce();
       decorateMain(main);
       applyTemplates(doc);
+      preloadFirstBlock(main);
       commerceReady = true;
     } catch (e) {
       console.error('Error initializing commerce configuration:', e);
@@ -273,16 +361,17 @@ async function loadEager(doc) {
           if (firstSectionNeedsDropins(main)) return startCommerceDropins();
           return undefined;
         });
-        await Promise.all([headerReady, firstSection, commerceEager]);
+        await Promise.all([firstSection, commerceEager]);
       } catch (e) {
         console.error('Error initializing commerce configuration:', e);
         loadErrorPage(418);
-        await Promise.all([headerReady, firstSection]);
+        await firstSection;
       }
     } else {
-      await Promise.all([headerReady, firstSection]);
+      await firstSection;
     }
-    if (sampleRUM.enhance) sampleRUM.enhance();
+    showViewportPdpSkeletons(main);
+    await headerReady;
   } else {
     await headerReady;
   }
@@ -293,6 +382,9 @@ async function loadEager(doc) {
  * @param {Element} doc The container element
  */
 async function loadLazy(doc) {
+  loadCSS(`${window.hlx.codeBasePath}/styles/lazy-styles.css`);
+  loadFonts();
+
   const header = doc.querySelector('header');
   if (header && !header.querySelector('.header')) await loadHeader(header);
 
@@ -303,9 +395,12 @@ async function loadLazy(doc) {
   }
 
   const main = doc.querySelector('main');
+  await afterNextPaint();
   await loadRemainingSections(main);
   const footer = doc.querySelector('footer');
   if (footer) await loadFooter(footer);
+
+  if (sampleRUM.enhance) sampleRUM.enhance();
 
   const { hash } = window.location;
   const element = hash ? doc.getElementById(hash.substring(1)) : false;
@@ -317,8 +412,11 @@ async function loadLazy(doc) {
 
   loadCommerceLazy();
 
-  loadCSS(`${window.hlx.codeBasePath}/styles/lazy-styles.css`);
-  loadFonts();
+  if (typeof window.requestIdleCallback === 'function') {
+    window.requestIdleCallback(() => hydrateDeferredBlocks(), { timeout: 4000 });
+  } else {
+    window.setTimeout(() => hydrateDeferredBlocks(), 1);
+  }
 }
 
 /**
