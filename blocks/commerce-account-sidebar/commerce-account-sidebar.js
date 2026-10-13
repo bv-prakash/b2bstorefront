@@ -3,50 +3,74 @@ import { render as accountRenderer } from '@dropins/storefront-account/render.js
 import { loadFragment } from '../fragment/fragment.js';
 import { CUSTOMER_ORDERS_PATH, rootLink } from '../../scripts/commerce.js';
 
+/**
+ * Top-level list items from /customer/sidebar-fragment.
+ * The fragment is a plain ol; after decorate it sits in a section wrapper.
+ * @param {Element|null} fragment
+ * @returns {Element[]}
+ */
+function readSidebarItems(fragment) {
+  if (!fragment) return [];
+  const list = fragment.querySelector('.default-content-wrapper > ol')
+    || fragment.querySelector('ol');
+  if (!list) return [];
+  return [...list.children].filter((item) => item.tagName === 'LI');
+}
+
+/**
+ * @param {Element|undefined} cell
+ * @returns {string}
+ */
+function cellPath(cell) {
+  if (!cell) return '';
+  const anchor = cell.querySelector('a[href]');
+  if (anchor) {
+    try {
+      return new URL(anchor.getAttribute('href'), window.location.origin).pathname;
+    } catch {
+      return anchor.getAttribute('href') || '';
+    }
+  }
+  return cell.textContent.trim();
+}
+
 export default async function decorate(block) {
   const fragment = await loadFragment('/customer/sidebar-fragment');
-  const sidebarItemsConfig = fragment.querySelectorAll('.default-content-wrapper > ol > li');
-  const sidebarItems = Array.from(sidebarItemsConfig).map((item) => {
-    const itemParams = Array.from(item.querySelectorAll('ol > li'));
-    const itemTitle = item.childNodes[0]?.textContent?.trim() || item.querySelector(':scope > p')?.textContent?.trim() || 'Default Title';
-    const itemSubtitle = itemParams[0]?.innerText || '';
-    const itemLink = itemParams[1]?.innerText || rootLink('#');
-    const itemIcon = itemParams[2]?.innerText || 'Placeholder';
-    const itemConfig = {
-      itemTitle,
-      itemSubtitle,
-      itemLink,
-      itemIcon,
-    };
+  if (!fragment) {
+    block.replaceChildren();
+    return;
+  }
+  const sidebarItems = readSidebarItems(fragment).map((item) => {
+    const itemParams = [...item.querySelectorAll(':scope > ol > li')];
+    const itemTitle = item.querySelector(':scope > p')?.textContent.trim()
+      || item.childNodes[0]?.textContent?.trim()
+      || 'Default Title';
+    const itemSubtitle = itemParams[0]?.textContent.trim() || '';
+    const itemLink = cellPath(itemParams[1]) || rootLink('#');
+    const itemIcon = itemParams[2]?.textContent.trim() || 'Placeholder';
 
     const menuItemEl = document.createElement('a');
     menuItemEl.classList.add('commerce-account-sidebar-item');
-    menuItemEl.href = rootLink(itemConfig.itemLink);
+    menuItemEl.href = rootLink(itemLink);
 
     const isItemActive = (
-      itemConfig.itemLink === CUSTOMER_ORDERS_PATH
+      itemLink === CUSTOMER_ORDERS_PATH
         ? window.location.href.includes(CUSTOMER_ORDERS_PATH)
-        : window.location.href.includes(itemConfig.itemLink)
+        : window.location.href.includes(itemLink)
     );
     if (isItemActive) {
       menuItemEl.classList.add('commerce-account-sidebar-item-active');
     }
 
-    const iconEl = createMenuItemIcon(itemConfig.itemIcon);
-    const contentEl = createMenuItemContent(itemConfig.itemTitle, itemConfig.itemSubtitle);
-    const arrowEl = createMenuItemArrow();
-
-    menuItemEl.appendChild(iconEl);
-    menuItemEl.appendChild(contentEl);
-    menuItemEl.appendChild(arrowEl);
-
+    menuItemEl.append(
+      createMenuItemIcon(itemIcon),
+      createMenuItemContent(itemTitle, itemSubtitle),
+      createMenuItemArrow(),
+    );
     return menuItemEl;
   });
 
-  block.innerHTML = '';
-  sidebarItems.forEach((el) => {
-    block.appendChild(el);
-  });
+  block.replaceChildren(...sidebarItems);
 }
 
 function createMenuItemIcon(iconSource) {

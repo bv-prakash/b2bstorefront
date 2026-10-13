@@ -1,3 +1,11 @@
 .commerce-newsletter {
   margin: var(--spacing-medium) 0;
 }
+
+.commerce-newsletter--minified {
+  max-width: 40rem;
+}
+
+.commerce-newsletter--options {
+  max-width: 40rem;
+}

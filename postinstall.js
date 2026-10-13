@@ -53,10 +53,15 @@ customDropins.forEach((dropin) => {
 
   fs.cpSync(dropin.from, dropin.to, {
     recursive: true,
-    filter: (src) => !src.endsWith('package.json')
-      && !src.endsWith('.map')
-      && !src.endsWith('.d.ts'),
+    filter: (src) => {
+      const name = path.basename(src);
+      return name !== 'reload'
+        && !src.endsWith('package.json')
+        && !src.endsWith('.map')
+        && !src.endsWith('.d.ts');
+    },
   });
+  pruneEmptyDirectories(dropin.to);
 });
 
 // Other files to copy
@@ -68,6 +73,16 @@ customDropins.forEach((dropin) => {
 ].forEach((file) => {
   fs.copyFileSync(path.resolve(__dirname, 'node_modules', file.from), path.resolve(__dirname, 'scripts', file.to));
 });
+
+function pruneEmptyDirectories(dir) {
+  if (!fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) return;
+  fs.readdirSync(dir).forEach((name) => {
+    pruneEmptyDirectories(path.join(dir, name));
+  });
+  if (fs.readdirSync(dir).length === 0) {
+    fs.rmdirSync(dir);
+  }
+}
 
 function checkPackageLockForArtifactory() {
   return new Promise((resolve, reject) => {

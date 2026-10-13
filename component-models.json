@@ -354,6 +354,32 @@
     "id": "commerce-newsletter",
     "fields": [
       {
+        "component": "select",
+        "name": "minified-view",
+        "label": "Minified view",
+        "value": "",
+        "options": [
+          {
+            "name": "Form",
+            "value": ""
+          },
+          {
+            "name": "True",
+            "value": "true"
+          },
+          {
+            "name": "False",
+            "value": "false"
+          }
+        ]
+      },
+      {
+        "component": "text",
+        "name": "newsletter-page",
+        "label": "Newsletter page",
+        "value": "/customer/newsletter"
+      },
+      {
         "component": "text",
         "name": "title",
         "label": "Title",

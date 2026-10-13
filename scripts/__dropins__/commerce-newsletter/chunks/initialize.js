@@ -1,4 +1,4 @@
 /*! Copyright 2026 Adobe
 All Rights Reserved. */
-import{Initializer as t}from"@dropins/tools/lib.js";const i=new t({init:async n=>{const o={};i.config.setConfig({...o,...n})},listeners:()=>[]}),c=i.config;export{c,i};
+import{Initializer as h,deepmerge as f}from"@dropins/tools/lib.js";const o=e=>e.reduce((t,n)=>{const a=n.Key||n.key,s=n.Value??n.value;return!a||s===void 0||(t[a]=s),t},{}),d=async e=>{if(typeof e!="string")return o(e.data||[]);try{const t=await fetch(e);if(!t.ok)return{};const n=await t.json();return o(n.data||[])}catch{return{}}},u=e=>{const t={};return Object.entries(e).forEach(([n,a])=>{const s=n.split(".");let r=t;s.forEach((i,l)=>{if(l===s.length-1){r[i]=a;return}r[i]||(r[i]={}),r=r[i]})}),t},c=new h({init:async e=>{const t={...e},a={...e.placeholderSheet?await d(e.placeholderSheet):{},...e.placeholders??{}};if(Object.keys(a).length){const s={default:u(a)};t.langDefinitions=e.langDefinitions?f(e.langDefinitions,s):s}c.config.setConfig(t)},listeners:()=>[]}),p=c.config;export{d as a,p as c,c as i,u as n,o as r};
 //# sourceMappingURL=initialize.js.map
